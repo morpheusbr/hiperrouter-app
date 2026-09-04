@@ -8,6 +8,32 @@ import { GITHUB_CONFIG } from "@/shared/constants/config";
 
 marked.setOptions({ gfm: true, breaks: true });
 
+function sanitizeHtmlContent(rawHtml) {
+  if (typeof window === "undefined" || !rawHtml) return "";
+  try {
+    const doc = new DOMParser().parseFromString(rawHtml, "text/html");
+    const dangerousTags = ["script", "iframe", "object", "embed", "style", "form", "svg", "math", "base", "link", "meta"];
+    dangerousTags.forEach((tag) => {
+      doc.querySelectorAll(tag).forEach((el) => el.remove());
+    });
+
+    const allElements = doc.querySelectorAll("*");
+    allElements.forEach((el) => {
+      for (const attr of Array.from(el.attributes)) {
+        const attrName = attr.name.toLowerCase();
+        const attrVal = attr.value.trim().toLowerCase();
+        if (attrName.startsWith("on") || attrVal.startsWith("javascript:") || attrVal.startsWith("data:text/html")) {
+          el.removeAttribute(attr.name);
+        }
+      }
+    });
+
+    return doc.body.innerHTML;
+  } catch {
+    return "";
+  }
+}
+
 export default function ChangelogModal({ isOpen, onClose }) {
   const [html, setHtml] = useState("");
   const [loading, setLoading] = useState(false);
@@ -23,7 +49,10 @@ export default function ChangelogModal({ isOpen, onClose }) {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.text();
       })
-      .then((md) => setHtml(marked.parse(md)))
+      .then((md) => {
+        const rawParsed = marked.parse(md);
+        setHtml(sanitizeHtmlContent(rawParsed));
+      })
       .catch((err) => setError(err.message || "Failed to load"))
       .finally(() => setLoading(false));
   }, [isOpen, html]);

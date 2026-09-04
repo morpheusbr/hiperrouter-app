@@ -4,19 +4,22 @@ import fs from "node:fs";
 import { DATA_DIR } from "@/lib/dataDir.js";
 
 function loadDbSecret() {
-  // Use environment variable instead of writing to disk
   if (process.env.DB_SECRET) return process.env.DB_SECRET;
-  // Fallback to default location for backward compatibility
   const file = path.join(DATA_DIR, "db-secret");
   try {
-    return fs.readFileSync(file, "utf8").trim();
-  } catch {
-    // Create file if it doesn't exist but don't write the secret to disk
-    // In production, DB_SECRET should be set via environment
-    if (process.env.NODE_ENV === "production" && !process.env.DB_SECRET) {
-      console.warn("[crypto] DB_SECRET environment variable not set - using insecure fallback");
+    const existing = fs.readFileSync(file, "utf8").trim();
+    if (existing) return existing;
+  } catch {}
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    const generated = crypto.randomBytes(32).toString("hex");
+    fs.writeFileSync(file, generated, { mode: 0o600 });
+    return generated;
+  } catch (err) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(`[crypto] Failed to initialize DB_SECRET in ${DATA_DIR}: ${err.message}`);
     }
-    return "fallback_secret_for_development_only";
+    return crypto.randomBytes(32).toString("hex");
   }
 }
 

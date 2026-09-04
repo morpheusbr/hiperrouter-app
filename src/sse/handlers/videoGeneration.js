@@ -183,7 +183,9 @@ export async function handleVideoGet(request, requestId) {
   const authError = await requireValidApiKey(request);
   if (authError) return authError;
 
-  if (!requestId) return errorResponse(HTTP_STATUS.BAD_REQUEST, "Missing video request id");
+  if (!requestId || typeof requestId !== "string" || !/^[\w-]+$/.test(requestId)) {
+    return errorResponse(HTTP_STATUS.BAD_REQUEST, "Invalid or missing video request id");
+  }
 
   const provider = DEFAULT_VIDEO_PROVIDER;
   const preferredConnectionId = request.headers.get("x-connection-id") || null;

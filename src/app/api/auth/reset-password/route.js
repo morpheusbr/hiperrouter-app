@@ -5,8 +5,8 @@ import { updateSettings } from "@/lib/localDb";
 // Local-only (enforced by dashboardGuard). Never returns the default literal.
 export async function POST() {
   try {
-    await updateSettings({ password: null });
-    return NextResponse.json({ success: true });
+    await updateSettings({ password: null, isSetupComplete: false });
+    return NextResponse.json({ success: true, message: "Password reset successfully. Setup wizard re-enabled on local interface." });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

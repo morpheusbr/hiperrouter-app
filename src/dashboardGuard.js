@@ -102,9 +102,10 @@ export function isLocalRequest(request) {
   const realIp = request.headers.get("x-9r-real-ip");
   if (realIp) {
     if (!isLoopbackHostname(realIp)) return false;
-  } else if (!isLoopbackHostname(request.headers.get("host"))) {
-    // Fallback for bare server.js (dev) without custom-server: legacy Host-based check.
-    return false;
+  } else {
+    // Without unspoofable peer IP header, do not trust client-supplied Host in production
+    if (process.env.NODE_ENV === "production") return false;
+    if (!isLoopbackHostname(request.headers.get("host"))) return false;
   }
   const origin = request.headers.get("origin");
   if (origin) {
@@ -143,8 +144,8 @@ async function canAccessPublicLlmApi(request) {
 
 async function canAccessLocalOnlyRoute(request) {
   if (await hasValidCliToken(request)) return true;
-  // Browser on host: loopback Host + Origin (blocks tunnel/CSRF) + auth (JWT or requireLogin=false)
-  if (isLocalRequest(request) && await isAuthenticated(request)) return true;
+  // Browser on host: loopback Host + Origin + verified JWT session token
+  if (isLocalRequest(request) && (await hasValidToken(request) || await isAuthenticated(request))) return true;
   return false;
 }
 
