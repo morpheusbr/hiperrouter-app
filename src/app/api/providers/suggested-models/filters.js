@@ -23,4 +23,12 @@ export const FILTERS = {
     (Array.isArray(models) ? models : [])
       .filter((m) => m.id?.startsWith("mimo") || m.name?.toLowerCase().includes("mimo"))
       .map((m) => ({ id: m.id, name: m.name || m.id })),
+
+  "opencode-zen": (models) =>
+    (Array.isArray(models) ? models : [])
+      .map((m) => ({ id: m.id, name: m.name || m.id })),
+
+  "opencode-go": (models) =>
+    (Array.isArray(models) ? models : [])
+      .map((m) => ({ id: m.id, name: m.name || m.id })),
 };

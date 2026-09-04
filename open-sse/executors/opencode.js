@@ -21,12 +21,14 @@ export class OpenCodeExecutor extends BaseExecutor {
       : `${base}/zen/v1/chat/completions`;
   }
 
-  buildHeaders() {
-    return {
+  buildHeaders(credentials, stream = true) {
+    const key = credentials?.apiKey || credentials?.accessToken;
+    const headers = {
       "Content-Type": "application/json",
-      "Authorization": "Bearer public",
+      "Authorization": key ? `Bearer ${key}` : "Bearer public",
       "x-opencode-client": "desktop",
-      "Accept": "text/event-stream"
     };
+    if (stream) headers["Accept"] = "text/event-stream";
+    return headers;
   }
 }

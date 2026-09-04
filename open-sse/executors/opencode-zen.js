@@ -3,28 +3,18 @@ import { PROVIDERS } from "../config/providers.js";
 import { injectReasoningContent } from "../utils/reasoningContentInjector.js";
 import { ANTHROPIC_API_VERSION } from "../providers/shared.js";
 
-// Models that use /zen/go/v1/messages (Anthropic/Claude format + x-api-key auth)
-const MESSAGES_FORMAT_MODELS = new Set([
-  "minimax-m3",
-  "minimax-m2.7",
-  "minimax-m2.5",
-  "qwen3.7-max",
-  "qwen3.7-plus",
-  "qwen3.6-plus",
-]);
+const BASE = "https://opencode.ai/zen/v1";
 
-const BASE = "https://opencode.ai/zen/go/v1";
-
-export class OpenCodeGoExecutor extends BaseExecutor {
+export class OpenCodeZenExecutor extends BaseExecutor {
   constructor() {
-    super("opencode-go", PROVIDERS["opencode-go"]);
+    super("opencode-zen", PROVIDERS["opencode-zen"]);
   }
 
   isMessagesModel(model) {
     return typeof model === "string" && (
-      MESSAGES_FORMAT_MODELS.has(model) ||
-      model.startsWith("qwen") ||
-      model.startsWith("minimax")
+      model.startsWith("claude-") ||
+      model.startsWith("minimax-") ||
+      model.startsWith("qwen")
     );
   }
 

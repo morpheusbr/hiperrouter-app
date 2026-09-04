@@ -409,6 +409,22 @@ export async function POST(request) {
           break;
         }
 
+        case "opencode-zen":
+        case "zen": {
+          const res = await fetch("https://opencode.ai/zen/v1/chat/completions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+            body: JSON.stringify({
+              model: getDefaultModel("opencode-zen") || "glm-5.2",
+              messages: [{ role: "user", content: "ping" }],
+              max_tokens: 1,
+              stream: false,
+            }),
+          });
+          isValid = res.status !== 401 && res.status !== 403;
+          break;
+        }
+
         case "commandcode": {
           const cfg = PROVIDERS.commandcode;
           const model = getDefaultModel("commandcode");
