@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSettings } from "@/lib/localDb";
 import bcrypt from "bcryptjs";
+import crypto from "node:crypto";
 import { cookies } from "next/headers";
 import { setDashboardAuthCookie } from "@/lib/auth/dashboardSession";
 import { isOidcConfigured } from "@/lib/auth/oidc";
@@ -36,7 +37,7 @@ export async function POST(request) {
       return NextResponse.json({ error: "Dashboard access via tunnel is disabled" }, { status: 403 });
     }
 
-    // Default password is '123456' if not set
+    // Check configured password or INITIAL_PASSWORD
     const storedHash = settings.password;
 
     if (settings.authMode === "oidc" && isOidcConfigured(settings)) {
@@ -47,7 +48,9 @@ export async function POST(request) {
     if (storedHash) {
       isValid = await bcrypt.compare(password, storedHash);
     } else if (process.env.INITIAL_PASSWORD) {
-      isValid = password === process.env.INITIAL_PASSWORD;
+      const a = Buffer.from(password || "");
+      const b = Buffer.from(process.env.INITIAL_PASSWORD);
+      isValid = a.length === b.length && crypto.timingSafeEqual(a, b);
     } else {
       return NextResponse.json({ error: "No password configured. Please complete initial setup." }, { status: 400 });
     }

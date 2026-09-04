@@ -8,27 +8,70 @@ import { GITHUB_CONFIG } from "@/shared/constants/config";
 
 marked.setOptions({ gfm: true, breaks: true });
 
+const ALLOWED_TAGS = new Set([
+  "h1", "h2", "h3", "h4", "h5", "h6",
+  "p", "ul", "ol", "li", "blockquote", "pre", "code", "hr", "br",
+  "table", "thead", "tbody", "tr", "th", "td",
+  "strong", "em", "b", "i", "s", "del", "span", "div", "a"
+]);
+
+function isSafeUrl(url) {
+  if (!url || typeof url !== "string") return false;
+  const trimmed = url.trim().replace(/[\u0000-\u001f\u007f-\u009f\s]/g, "");
+  return /^https?:\/\//i.test(trimmed) || /^#[a-zA-Z0-9_-]+$/.test(trimmed);
+}
+
+function cleanNode(node, doc) {
+  if (node.nodeType === Node.TEXT_NODE) {
+    return doc.createTextNode(node.textContent || "");
+  }
+  if (node.nodeType === Node.ELEMENT_NODE) {
+    const tagName = node.tagName.toLowerCase();
+    if (!ALLOWED_TAGS.has(tagName)) {
+      const frag = doc.createDocumentFragment();
+      for (const child of Array.from(node.childNodes)) {
+        const cleanedChild = cleanNode(child, doc);
+        if (cleanedChild) frag.appendChild(cleanedChild);
+      }
+      return frag;
+    }
+
+    const cleanEl = doc.createElement(tagName);
+    if (tagName === "a") {
+      const rawHref = node.getAttribute("href");
+      if (rawHref && isSafeUrl(rawHref)) {
+        cleanEl.setAttribute("href", rawHref.trim());
+        cleanEl.setAttribute("target", "_blank");
+        cleanEl.setAttribute("rel", "noopener noreferrer");
+      }
+      const title = node.getAttribute("title");
+      if (title) cleanEl.setAttribute("title", title.slice(0, 200));
+    } else if (tagName === "code" || tagName === "span" || tagName === "pre") {
+      const cls = node.getAttribute("class");
+      if (cls && /^[a-zA-Z0-9_\s-]+$/.test(cls)) {
+        cleanEl.setAttribute("class", cls);
+      }
+    }
+
+    for (const child of Array.from(node.childNodes)) {
+      const cleanedChild = cleanNode(child, doc);
+      if (cleanedChild) cleanEl.appendChild(cleanedChild);
+    }
+    return cleanEl;
+  }
+  return null;
+}
+
 function sanitizeHtmlContent(rawHtml) {
   if (typeof window === "undefined" || !rawHtml) return "";
   try {
     const doc = new DOMParser().parseFromString(rawHtml, "text/html");
-    const dangerousTags = ["script", "iframe", "object", "embed", "style", "form", "svg", "math", "base", "link", "meta"];
-    dangerousTags.forEach((tag) => {
-      doc.querySelectorAll(tag).forEach((el) => el.remove());
-    });
-
-    const allElements = doc.querySelectorAll("*");
-    allElements.forEach((el) => {
-      for (const attr of Array.from(el.attributes)) {
-        const attrName = attr.name.toLowerCase();
-        const attrVal = attr.value.trim().toLowerCase();
-        if (attrName.startsWith("on") || attrVal.startsWith("javascript:") || attrVal.startsWith("data:text/html")) {
-          el.removeAttribute(attr.name);
-        }
-      }
-    });
-
-    return doc.body.innerHTML;
+    const container = doc.createElement("div");
+    for (const child of Array.from(doc.body.childNodes)) {
+      const cleaned = cleanNode(child, doc);
+      if (cleaned) container.appendChild(cleaned);
+    }
+    return container.innerHTML;
   } catch {
     return "";
   }

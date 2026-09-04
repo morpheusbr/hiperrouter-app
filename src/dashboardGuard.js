@@ -7,12 +7,12 @@ const CLI_TOKEN_HEADER = "x-9r-cli-token";
 const CLI_TOKEN_SALT = "9r-cli-auth";
 
 let cachedCliToken = null;
-async function getCliToken() {
+export async function getCliToken() {
   if (!cachedCliToken) cachedCliToken = await getConsistentMachineId(CLI_TOKEN_SALT);
   return cachedCliToken;
 }
 
-async function hasValidCliToken(request) {
+export async function hasValidCliToken(request) {
   const token = request.headers.get(CLI_TOKEN_HEADER);
   if (!token) return false;
   return token === await getCliToken();
@@ -98,12 +98,18 @@ export function isLocalRequest(request) {
   // Stamped by custom-server.js when forwarding headers exist: request came through
   // a reverse proxy, so the loopback socket is the proxy hop, not the end-user.
   if (request.headers.get("x-9r-via-proxy")) return false;
-  // Trusted peer IP from TCP socket (custom-server.js); unspoofable. Primary anchor for "local".
+
+  const serverStamp = request.headers.get("x-9r-server-stamp");
+  const expectedStamp = process.env._INTERNAL_SERVER_STAMP;
+  // If internal server stamp is configured, require it to trust x-9r-real-ip
+  const isTrustedRealIp = !expectedStamp || serverStamp === expectedStamp;
+
+  // Trusted peer IP from TCP socket (custom-server.js); unspoofable when stamped. Primary anchor for "local".
   const realIp = request.headers.get("x-9r-real-ip");
-  if (realIp) {
+  if (realIp && isTrustedRealIp) {
     if (!isLoopbackHostname(realIp)) return false;
   } else {
-    // Without unspoofable peer IP header, do not trust client-supplied Host in production
+    // Without unspoofable peer IP header, do not trust client-supplied Host or unverified x-9r-real-ip in production
     if (process.env.NODE_ENV === "production") return false;
     if (!isLoopbackHostname(request.headers.get("host"))) return false;
   }

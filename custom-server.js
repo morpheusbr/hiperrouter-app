@@ -1,4 +1,8 @@
 const http = require("http");
+const crypto = require("crypto");
+
+const SERVER_STAMP = crypto.randomBytes(32).toString("hex");
+process.env._INTERNAL_SERVER_STAMP = SERVER_STAMP;
 
 const origCreate = http.createServer.bind(http);
 
@@ -10,6 +14,7 @@ http.createServer = (...args) => {
   const rest = args.filter((a) => typeof a !== "function");
   if (!handler) return origCreate(...args);
   const wrapped = (req, res) => {
+    delete req.headers["x-9r-server-stamp"];
     const socketIp = req.socket && req.socket.remoteAddress ? req.socket.remoteAddress : "";
     const xff = req.headers["x-forwarded-for"];
     const xRealIp = req.headers["x-real-ip"];
@@ -23,6 +28,7 @@ http.createServer = (...args) => {
     delete req.headers["x-forwarded-for"];
     delete req.headers["x-9r-via-proxy"];
     req.headers["x-9r-real-ip"] = ip;
+    req.headers["x-9r-server-stamp"] = SERVER_STAMP;
     if (viaProxy) req.headers["x-9r-via-proxy"] = "1";
     return handler(req, res);
   };

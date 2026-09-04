@@ -3,6 +3,7 @@ import { getSettings, updateSettings } from "@/lib/localDb";
 import { applyOutboundProxyEnv } from "@/lib/network/outboundProxy";
 import { resetComboRotation } from "open-sse/services/combo.js";
 import bcrypt from "bcryptjs";
+import crypto from "node:crypto";
 import { z } from "zod";
 import { withBodyValidation } from "@/lib/api/withValidation";
 import { safeUrlSchema } from "@/shared/validators/zodSchemas";
@@ -74,10 +75,12 @@ export const PATCH = withBodyValidation(SettingsPatchSchema, async (request, bod
         if (!isValid) {
           return NextResponse.json({ error: "Invalid current password" }, { status: 401 });
         }
-      } else {
-        // First time setting password, no current password needed
-        if (body.currentPassword && body.currentPassword !== "123456") {
-           return NextResponse.json({ error: "Invalid current password" }, { status: 401 });
+      } else if (process.env.INITIAL_PASSWORD) {
+        const a = Buffer.from(body.currentPassword || "");
+        const b = Buffer.from(process.env.INITIAL_PASSWORD);
+        const isValid = a.length === b.length && crypto.timingSafeEqual(a, b);
+        if (!isValid) {
+          return NextResponse.json({ error: "Invalid current password" }, { status: 401 });
         }
       }
 

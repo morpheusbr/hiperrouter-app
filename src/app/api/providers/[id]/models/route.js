@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getProviderConnectionById } from "@/models";
 import { isOpenAICompatibleProvider, isAnthropicCompatibleProvider } from "@/shared/constants/providers";
-import { GEMINI_CONFIG } from "@/lib/oauth/constants/oauth";
+import { GEMINI_CONFIG, ANTIGRAVITY_CONFIG } from "@/lib/oauth/constants/oauth";
 import { refreshGoogleToken, refreshCodexToken, updateProviderCredentials } from "@/sse/services/tokenRefresh";
 import { resolveOllamaLocalHost } from "open-sse/config/providers.js";
 import { getModelsByProviderId } from "open-sse/config/providerModels.js";
@@ -180,15 +180,7 @@ const PROVIDER_MODELS_CONFIG = {
       errorLabel: "Failed to fetch Codex models"
     })
   },
-  antigravity: {
-    url: "https://daily-cloudcode-pa.sandbox.googleapis.com/v1internal:models",
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    authHeader: "Authorization",
-    authPrefix: "Bearer ",
-    body: {},
-    parseResponse: (data) => data.models || []
-  },
+
   github: {
     url: "https://api.githubcopilot.com/models",
     method: "GET",
@@ -386,6 +378,37 @@ const PROVIDER_MODELS_CONFIG = {
       }
       return { models: [], warning };
     },
+  },
+  "antigravity": {
+    customResolver: async (connection) => {
+      const resolver = buildOAuthResolver({
+        refreshFn: (conn) => refreshGoogleToken(conn.refreshToken, ANTIGRAVITY_CONFIG.clientId, ANTIGRAVITY_CONFIG.clientSecret),
+        fetchFn: (token, conn) => {
+          const projectId = conn.projectId || conn.providerSpecificData?.projectId;
+          const body = projectId ? { project: projectId } : {};
+          return fetch(GEMINI_CLI_MODELS_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`,
+              "User-Agent": ANTIGRAVITY_CONFIG.loadCodeAssistUserAgent || "google-api-nodejs-client/9.15.1",
+              "X-Goog-Api-Client": ANTIGRAVITY_CONFIG.loadCodeAssistApiClient || "google-cloud-sdk vscode_cloudshelleditor/0.1"
+            },
+            body: JSON.stringify(body)
+          });
+        },
+        parseFn: parseGeminiCliModels,
+        errorLabel: "Failed to fetch Antigravity models"
+      });
+      const result = await resolver(connection);
+      if (result.models && result.models.length > 0) {
+        return result;
+      }
+      return {
+        models: getStaticProviderModels("antigravity"),
+        warning: result.warning || "Antigravity returned no live models; using static catalog."
+      };
+    }
   },
   "gemini-cli": {
     customResolver: buildOAuthResolver({
