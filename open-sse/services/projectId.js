@@ -103,7 +103,7 @@ export async function getProjectIdForConnection(connectionId, accessToken) {
     const promise = (async () => {
         try {
             const projectId = await fetchProjectId(accessToken, controller.signal);
-            if (projectId) {
+            if (projectId !== null && projectId !== undefined) {
                 projectIdCache.set(connectionId, {projectId, fetchedAt: Date.now()});
                 return projectId;
             }
@@ -169,6 +169,7 @@ async function fetchProjectId(accessToken, signal) {
     }
 
     const data = await response.json();
+    console.log(`[ProjectId] loadCodeAssist tiers: ${JSON.stringify(data.allowedTiers)} | ineligible: ${JSON.stringify(data.ineligibleTiers)}`);
     const projectId = extractProjectId(data);
     if (projectId) return projectId;
 
@@ -235,7 +236,10 @@ async function onboardUser(accessToken, tierID, externalSignal) {
                     console.log(`[ProjectId] Successfully onboarded, project ID: ${projectId}`);
                     return projectId;
                 }
-                throw new Error("onboardUser done but no project_id in response");
+                // When cloudaicompanionProject is empty or not provided, user is onboarded under individual tier (Pro/Personal)
+                // Returning "" signals that onboarding is done and no GCP project ID is required/available.
+                console.log(`[ProjectId] Successfully onboarded under individual/companion tier (no GCP project ID required)`);
+                return "";
             }
 
             // Server not done yet – wait and retry

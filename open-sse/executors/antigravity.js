@@ -134,7 +134,8 @@ export class AntigravityExecutor extends BaseExecutor {
   }
 
   transformRequest(model, body, stream, credentials) {
-    const projectId = credentials?.projectId || this.generateProjectId();
+    const rawProjectId = credentials?.projectId;
+    const projectId = (typeof rawProjectId === "string" && rawProjectId.trim().length > 0) ? rawProjectId.trim() : null;
 
     // ─── Image generation: completely different request structure ───
     if (isImageModel(model)) {
@@ -174,7 +175,7 @@ export class AntigravityExecutor extends BaseExecutor {
       };
 
       return {
-        project: projectId,
+        ...(projectId ? { project: projectId } : {}),
         model: cleanModel,
         userAgent: "antigravity",
         requestType: "image_gen",
@@ -263,7 +264,7 @@ export class AntigravityExecutor extends BaseExecutor {
 
     return {
       ...body,
-      project: projectId,
+      ...(projectId ? { project: projectId } : {}),
       model: model,
       userAgent: "antigravity",
       requestType: "agent",
