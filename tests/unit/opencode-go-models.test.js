@@ -88,7 +88,32 @@ describe("OpenCode Go endpoint routing", () => {
       expect(headers.Authorization).toBe("Bearer sk-test");
       expect(headers["x-api-key"]).toBeUndefined();
       expect(headers["anthropic-version"]).toBeUndefined();
+      expect(headers["x-opencode-session"]).toBeDefined();
     }
+  });
+
+  it("always includes mandatory x-opencode-session header", () => {
+    const executor = new OpenCodeGoExecutor();
+
+    // Default fallback generates a valid session ID
+    const h1 = executor.buildHeaders({ apiKey: "sk-test" }, false);
+    expect(h1["x-opencode-session"]).toBeDefined();
+    expect(typeof h1["x-opencode-session"]).toBe("string");
+    expect(h1["x-opencode-session"].length).toBeGreaterThan(0);
+
+    // Forwarding client rawHeader
+    const h2 = executor.buildHeaders({
+      apiKey: "sk-test",
+      rawHeaders: { "x-opencode-session": "sess-test-abc" }
+    }, false);
+    expect(h2["x-opencode-session"]).toBe("sess-test-abc");
+
+    // Strips namespace prefix from _clientSessionId
+    const h3 = executor.buildHeaders({
+      apiKey: "sk-test",
+      _clientSessionId: "claude:550e8400-e29b-41d4-a716-446655440000"
+    }, false);
+    expect(h3["x-opencode-session"]).toBe("550e8400-e29b-41d4-a716-446655440000");
   });
 });
 
