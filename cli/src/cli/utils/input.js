@@ -212,6 +212,7 @@ async function confirm(question) {
 }
 
 async function pause(message = "Press Enter to continue...") {
+  if (!process.stdin.isTTY) return;
   return suspendRawFor(() => new Promise((resolve) => {
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
     rl.question(message, () => { rl.close(); resolve(); });

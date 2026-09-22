@@ -17,6 +17,26 @@ async function run(args) {
     return createBackup(name);
   }
 
+  if (action === "list" || !process.stdin.isTTY) {
+    const files = fs.readdirSync(backupDir).filter(f => f.endsWith(".json"));
+    if (files.length === 0) {
+      console.log(`\nNenhum snapshot ou backup encontrado em ${backupDir}.\n`);
+      return 0;
+    }
+    console.log(`\n📦 Snapshots & Backups (${backupDir}):\n`);
+    for (const f of files) {
+      const filePath = path.join(backupDir, f);
+      try {
+        const content = JSON.parse(fs.readFileSync(filePath, "utf8"));
+        console.log(` - ${content.name || f} (${content.createdAt || "data desconhecida"})`);
+      } catch {
+        console.log(` - ${f}`);
+      }
+    }
+    console.log("");
+    return 0;
+  }
+
   // Interactive TUI Loop
   while (true) {
     const files = fs.readdirSync(backupDir).filter(f => f.endsWith(".json"));
@@ -57,7 +77,15 @@ async function run(args) {
 async function createBackup(customName) {
   const backupDir = getBackupDir();
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const snapshotName = customName || `snapshot-${timestamp}`;
+  let snapshotName = `snapshot-${timestamp}`;
+  if (customName) {
+    const safeName = path.basename(String(customName)).replace(/[^a-zA-Z0-9._-]/g, "_");
+    if (!safeName) {
+      console.error(`❌ Nome de backup inválido.`);
+      return 1;
+    }
+    snapshotName = safeName;
+  }
   const targetFile = path.join(backupDir, `${snapshotName}.json`);
 
   const dbPath = path.join(getCliDataDir(), "db", "data.sqlite");

@@ -76,9 +76,24 @@ function runConfig() {
     return 0;
   }
 
-  console.log(JSON.stringify(cfg, null, 2));
+  const maskedCfg = maskSecrets(cfg);
+  console.log(JSON.stringify(maskedCfg, null, 2));
   console.log();
   return 0;
+}
+
+function maskSecrets(cfg) {
+  if (!cfg || typeof cfg !== "object") return cfg;
+  const { maskKey } = require("../utils/format");
+  const masked = Array.isArray(cfg) ? [...cfg] : { ...cfg };
+  for (const [k, v] of Object.entries(masked)) {
+    if (v && typeof v === "object") {
+      masked[k] = maskSecrets(v);
+    } else if (typeof v === "string" && (k.toLowerCase().includes("key") || k.toLowerCase().includes("secret") || k.toLowerCase().includes("token") || k.toLowerCase().includes("password"))) {
+      masked[k] = maskKey(v);
+    }
+  }
+  return masked;
 }
 
 async function run(args = []) {
@@ -96,4 +111,4 @@ async function run(args = []) {
   return 1;
 }
 
-module.exports = { run };
+module.exports = { run, maskSecrets };

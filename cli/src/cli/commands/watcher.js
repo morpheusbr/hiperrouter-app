@@ -84,6 +84,27 @@ async function run(args) {
     return 1;
   }
 
+  const isStandalone = process.argv.slice(2).some(arg => arg === "watcher");
+  if (isStandalone) {
+    return new Promise((resolve) => {
+      console.log(`${COLORS.dim}Pressione Ctrl+C para encerrar o monitoramento.${COLORS.reset}\n`);
+      const cleanup = () => {
+        if (watcher) {
+          try { watcher.close(); } catch {}
+          watcher = null;
+        }
+        if (debounceTimer) clearTimeout(debounceTimer);
+        console.log(`\n${COLORS.red}🔴 File Watcher encerrado.${COLORS.reset}`);
+        console.log(`${COLORS.dim}${changeLog.length} alterações registradas nesta sessão.${COLORS.reset}\n`);
+        process.removeListener('SIGINT', cleanup);
+        process.removeListener('SIGTERM', cleanup);
+        resolve(0);
+      };
+      process.on('SIGINT', cleanup);
+      process.on('SIGTERM', cleanup);
+    });
+  }
+
   return 0;
 }
 

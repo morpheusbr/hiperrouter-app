@@ -12,12 +12,15 @@ function promptInput(question) {
 }
 
 async function run(args) {
-  const query = args.join(" ");
-  const searchQuery = query || (await promptInput("Digite a busca na web: "));
+  const query = (args || []).join(" ").trim();
+  let searchQuery = query;
+  if (!searchQuery && process.stdin.isTTY) {
+    searchQuery = await promptInput("Digite a busca na web: ");
+  }
 
   if (!searchQuery) {
     console.log("❌ Busca vazia.\n");
-    return 0;
+    return 1;
   }
 
   console.log(`\n🌐 Buscando na web por: "${searchQuery}"...`);
@@ -33,7 +36,7 @@ async function run(args) {
     
     console.log(`\n🔎 RESULTADOS ENCONTRADOS:`);
     if (matches.length === 0) {
-      console.log(`ℹ️  Busca realizada. Use ferramentas de busca integradas.`);
+      console.log(`ℹ️  Nenhum link direto extraído. Verifique sua conectividade ou tente termos mais específicos.`);
     } else {
       matches.slice(0, 5).forEach((m, i) => {
         const url = m[1].replace(/^\/\/duckduckgo.com\/l\/\?uddg=/, "").split("&")[0];
@@ -42,7 +45,9 @@ async function run(args) {
     }
     console.log("");
   } catch (e) {
-    console.log(`❌ Erro na busca: ${e.message}`);
+    console.log(`❌ Erro na busca: ${e.message}\n`);
+    await pause();
+    return 1;
   }
 
   await pause();

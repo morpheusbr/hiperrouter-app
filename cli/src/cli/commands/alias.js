@@ -12,8 +12,39 @@ function promptInput(question) {
   });
 }
 
+async function listAliases() {
+  try {
+    const res = await makeRequest("GET", "/api/models/alias");
+    if (!res || !res.success) {
+      console.log(`❌ Não foi possível listar aliases: ${res?.error || "Servidor indisponível"}`);
+      return 1;
+    }
+    const aliases = (res.data && res.data.aliases) ? res.data.aliases : {};
+    const entries = Object.entries(aliases);
+    if (entries.length === 0) {
+      console.log("ℹ️  Nenhum alias de modelo configurado.");
+      return 0;
+    }
+    console.log("\n🔀 Aliases de Modelos Configurados:\n");
+    console.log(" ALIAS                ➔ MODELO DE DESTINO");
+    console.log("----------------------+----------------------------------");
+    for (const [a, m] of entries) {
+      console.log(` ${a.padEnd(20)} ➔ ${m}`);
+    }
+    console.log();
+    return 0;
+  } catch (e) {
+    console.log(`❌ Não foi possível listar aliases: ${e.message}`);
+    return 1;
+  }
+}
+
 async function run(args) {
   const [action, alias, model] = args || [];
+
+  if (action === "list" || action === "ls") {
+    return listAliases();
+  }
 
   if (action === "set") {
     if (!alias || !model) {

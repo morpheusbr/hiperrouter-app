@@ -275,15 +275,15 @@ Usage: hiperrouter doctor [--fix] [--port <n>]
   }
 
   // 12. Chat history cleanup
-  const historyPattern = path.join(dataDir, "chat_history_*.json");
   try {
-    const { execSync } = require("child_process");
-    const historyFiles = execSync(`ls ${historyPattern} 2>/dev/null`, { encoding: "utf8" }).trim().split("\n").filter(Boolean);
-    if (historyFiles.length > 10) {
-      console.log(`⚠️  ${historyFiles.length} arquivos de histórico (considere /clear para limpar)`);
-      warnCount++;
-    } else if (historyFiles.length > 0) {
-      console.log(`✅ Chat history: ${historyFiles.length} sessão(ões)`);
+    if (fs.existsSync(dataDir)) {
+      const historyFiles = fs.readdirSync(dataDir).filter(f => f.startsWith("chat_history_") && f.endsWith(".json"));
+      if (historyFiles.length > 10) {
+        console.log(`⚠️  ${historyFiles.length} arquivos de histórico (considere /clear para limpar)`);
+        warnCount++;
+      } else if (historyFiles.length > 0) {
+        console.log(`✅ Chat history: ${historyFiles.length} sessão(ões)`);
+      }
     }
   } catch {}
 

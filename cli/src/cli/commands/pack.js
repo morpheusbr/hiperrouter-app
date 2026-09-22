@@ -29,6 +29,8 @@ async function run(args) {
       console.log(`✅ Pacote importado com sucesso para ${dataDir}!`);
     } catch (e) {
       console.log(`❌ Erro na importação: ${e.message}`);
+      await pause();
+      return 1;
     }
     await pause();
     return 0;
@@ -53,6 +55,8 @@ async function run(args) {
     console.log(`✅ Pacote exportado com sucesso para: ${exportPath}\n`);
   } catch (e) {
     console.log(`❌ Erro ao exportar pacote: ${e.message}`);
+    await pause();
+    return 1;
   }
 
   await pause();

@@ -5,6 +5,20 @@ async function run(args) {
   console.log(`\n🔤 HiperRouter Token Saver & Compression Manager`);
   console.log(`=================================================\n`);
 
+  if (!process.stdin.isTTY || (args && args[0] === "status")) {
+    try {
+      const res = await api.makeRequest("GET", "/api/token-saver/config");
+      const currentConfig = res?.data || { enabled: true, compressionLevel: "medium", removeComments: true };
+      console.log(` ⚡ Status:       ${currentConfig.enabled ? "🟢 ATIVADO" : "🔴 DESATIVADO"}`);
+      console.log(` 📊 Compressão:   ${(currentConfig.compressionLevel || "medium").toUpperCase()}`);
+      console.log(` 🧹 Comentários:  ${currentConfig.removeComments ? "Remover" : "Manter"}\n`);
+    } catch (e) {
+      console.log(` ❌ Falha ao obter status: ${e.message}\n`);
+      return 1;
+    }
+    return 0;
+  }
+
   while (true) {
     console.log(`⏳ Buscando configurações do Token Saver...`);
     let currentConfig = { enabled: true, compressionLevel: "medium", removeComments: true };

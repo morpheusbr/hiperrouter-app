@@ -59,6 +59,7 @@ const COMMANDS = {
     description: "Ferramentas de diagnóstico (paths, config)",
     usage: "hiperrouter debug <paths|config>",
     category: "Diagnóstico",
+    customHelp: true,
     examples: ["hiperrouter debug paths", "hiperrouter debug config"],
     run: async (args) => {
       const { run } = require("./debug");
@@ -69,6 +70,7 @@ const COMMANDS = {
     description: "Diagnóstico (Node, SQLite, portas, permissões)",
     usage: "hiperrouter doctor",
     category: "Diagnóstico",
+    customHelp: true,
     run: async (args) => {
       const { run } = require("./doctor");
       return run(args);
@@ -333,6 +335,7 @@ const COMMANDS = {
     description: "Rodar agente headless em background",
     usage: 'hiperrouter task "<prompt>"',
     category: "Agente",
+    customHelp: true,
     examples: ['hiperrouter task "explique este repo"'],
     run: async (args) => {
       const { run } = require("./task");
@@ -379,6 +382,7 @@ const COMMANDS = {
     description: "Grok Imagine video (xai video)",
     usage: 'hiperrouter xai video --prompt "..." --output video.mp4',
     category: "Agente",
+    customHelp: true,
     examples: ['hiperrouter xai video --help'],
     run: async (args) => {
       if (args[0] === "video") {
@@ -409,10 +413,27 @@ async function dispatchSubcommand(args) {
   }
 
   const command = COMMANDS[cmdName];
-  if (!command) return false;
+  if (!command) {
+    if (!cmdName.startsWith("-")) {
+      console.error(`❌ Comando desconhecido: "${cmdName}"`);
+      console.error(`   Use: hiperrouter help`);
+      process.exit(1);
+      return true;
+    }
+    return false;
+  }
+
+  // Handle command-specific --help when the command doesn't implement custom flags
+  const subArgs = args.slice(1);
+  if ((subArgs.includes("--help") || subArgs.includes("-h")) && !command.customHelp) {
+    const { printCommandHelp } = require("./help");
+    const exitCode = printCommandHelp(COMMANDS, cmdName);
+    process.exit(exitCode || 0);
+    return true;
+  }
 
   try {
-    const exitCode = await command.run(args.slice(1));
+    const exitCode = await command.run(subArgs);
     process.exit(exitCode || 0);
   } catch (err) {
     console.error(`❌ ${err?.message || err}`);

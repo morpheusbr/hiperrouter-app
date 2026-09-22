@@ -1,5 +1,6 @@
 const { selectMenu, pause } = require("../utils/input");
 const { makeRequest } = require("../api/client");
+const { maskKey } = require("../utils/format");
 const readline = require("readline");
 
 function promptInput(question) {
@@ -12,8 +13,42 @@ function promptInput(question) {
   });
 }
 
+async function listKeys() {
+  try {
+    const res = await makeRequest("GET", "/api/providers");
+    if (!res || !res.success) {
+      console.log(`❌ Não foi possível listar provedores: ${res?.error || "Servidor indisponível"}`);
+      return 1;
+    }
+    const providers = (res.data && Array.isArray(res.data.providers)) ? res.data.providers : [];
+    if (providers.length === 0) {
+      console.log("ℹ️  Nenhum provedor configurado.");
+      return 0;
+    }
+
+    console.log("\n🔑 Provedores e Chaves de API Configurados:\n");
+    console.log(" PROVEDOR             | STATUS    | CHAVE");
+    console.log("----------------------+-----------+----------------------");
+    for (const p of providers) {
+      const name = (p.name || p.id).padEnd(20);
+      const status = (p.enabled !== false ? "🟢 Ativo   " : "🔴 Inativo ");
+      const key = p.apiKey ? maskKey(p.apiKey) : "(sem chave)";
+      console.log(` ${name} | ${status} | ${key}`);
+    }
+    console.log();
+    return 0;
+  } catch (e) {
+    console.log(`❌ Não foi possível listar provedores: ${e.message}`);
+    return 1;
+  }
+}
+
 async function run(args) {
   const [action, provider, key] = args || [];
+
+  if (action === "list" || action === "ls") {
+    return listKeys();
+  }
 
   // If flags/arguments passed directly, execute immediately
   if (action === "set" || action === "add") {
@@ -40,7 +75,7 @@ async function run(args) {
       { label: "➕ Adicionar / Atualizar Chave de Provedor", action: "add" },
       { label: "❌ Remover Chave de Provedor", action: "rm" },
       ...providers.map(p => ({
-        label: `${p.name || p.id}: ${p.apiKey ? p.apiKey.substring(0, 8) + "..." : "Não configurada"} (${p.enabled !== false ? "🟢 Ativo" : "🔴 Desativado"})`,
+        label: `${p.name || p.id}: ${p.apiKey ? maskKey(p.apiKey) : "Não configurada"} (${p.enabled !== false ? "🟢 Ativo" : "🔴 Desativado"})`,
         action: "view",
         provider: p
       })),
@@ -68,7 +103,7 @@ async function run(args) {
       }
     } else if (selected.action === "view") {
       console.log(`\n📌 Detalhes do Provedor: ${selected.provider.name || selected.provider.id}`);
-      console.log(` Chave: ${selected.provider.apiKey || "N/A"}`);
+      console.log(` Chave: ${selected.provider.apiKey ? maskKey(selected.provider.apiKey) : "N/A"}`);
       console.log(` Status: ${selected.provider.enabled !== false ? "Ativo" : "Desativado"}\n`);
       await pause();
     }
@@ -101,4 +136,4 @@ async function removeKey(provider) {
   }
 }
 
-module.exports = { run };
+module.exports = { run, maskKey };
