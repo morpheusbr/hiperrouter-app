@@ -379,7 +379,11 @@ export async function POST(request) {
         case "ai21":
         case "upstage":
         case "scaleway":
-        case "replicate": {
+        case "replicate":
+        case "devin":
+        case "meta":
+        case "cody":
+        case "huggingface": {
           const endpoints = {
             ...Object.fromEntries(
               Object.entries(PROVIDERS).filter(([, t]) => t.validateUrl).map(([id, t]) => [id, t.validateUrl])
@@ -600,6 +604,21 @@ export async function POST(request) {
           if (res.status === 401 || res.status === 403) {
             isValid = false;
             error = "Invalid session cookie — re-paste __Secure-next-auth.session-token from perplexity.ai";
+          } else {
+            isValid = true;
+          }
+          break;
+        }
+
+        case "poe": {
+          let cookie = apiKey;
+          if (!cookie.startsWith("p-b=")) cookie = `p-b=${cookie}`;
+          const res = await fetch("https://api.poe.com/v1/models", {
+            headers: { Cookie: cookie },
+          });
+          if (res.status === 401 || res.status === 403) {
+            isValid = false;
+            error = "Invalid Poe cookie — re-paste p-b cookie from poe.com";
           } else {
             isValid = true;
           }

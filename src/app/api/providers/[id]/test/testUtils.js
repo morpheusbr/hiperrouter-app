@@ -764,6 +764,33 @@ async function testApiKeyConnection(connection, effectiveProxy = null) {
         const res = await fetchWithConnectionProxy("https://api.replicate.com/v1/models", { headers: { Authorization: `Bearer ${connection.apiKey}` } }, effectiveProxy);
         return { valid: res.ok, error: res.ok ? null : "Invalid API key" };
       }
+      case "devin": {
+        const token = connection.accessToken || connection.apiKey;
+        const res = await fetchWithConnectionProxy("https://api.devin.ai/v1/models", { headers: { Authorization: `Bearer ${token}` } }, effectiveProxy);
+        return { valid: res.ok, error: res.ok ? null : "Invalid Devin credentials" };
+      }
+      case "meta": {
+        const token = connection.accessToken || connection.apiKey;
+        const res = await fetchWithConnectionProxy("https://api.dev.meta.ai/v1/models", { headers: { Authorization: `Bearer ${token}` } }, effectiveProxy);
+        return { valid: res.ok, error: res.ok ? null : "Invalid Meta credentials" };
+      }
+      case "cody": {
+        const token = connection.accessToken || connection.apiKey;
+        const res = await fetchWithConnectionProxy("https://sourcegraph.com/.api/models", { headers: { Authorization: `token ${token}` } }, effectiveProxy);
+        return { valid: res.ok, error: res.ok ? null : "Invalid Cody token" };
+      }
+      case "poe": {
+        let cookie = connection.apiKey;
+        if (!cookie.startsWith("p-b=")) cookie = `p-b=${cookie}`;
+        const res = await fetchWithConnectionProxy("https://api.poe.com/v1/models", { headers: { Cookie: cookie } }, effectiveProxy);
+        const valid = res.status !== 401 && res.status !== 403;
+        return { valid, error: valid ? null : "Invalid Poe p-b cookie" };
+      }
+      case "huggingface": {
+        const token = connection.accessToken || connection.apiKey;
+        const res = await fetchWithConnectionProxy("https://router.huggingface.co/v1/models", { headers: { Authorization: `Bearer ${token}` } }, effectiveProxy);
+        return { valid: res.ok, error: res.ok ? null : "Invalid Hugging Face token" };
+      }
       case "grok-web": {
         const token = connection.apiKey.startsWith("sso=") ? connection.apiKey.slice(4) : connection.apiKey;
         const randomHex = (n) => Array.from(crypto.getRandomValues(new Uint8Array(n)), (b) => b.toString(16).padStart(2, "0")).join("");

@@ -278,6 +278,11 @@ const PROVIDER_MODELS_CONFIG = {
   upstage: createOpenAIModelsConfig("https://api.upstage.ai/v1/solar/models"),
   scaleway: createOpenAIModelsConfig("https://api.scaleway.ai/v1/models"),
   replicate: createOpenAIModelsConfig("https://api.replicate.com/v1/models"),
+  devin: createOpenAIModelsConfig("https://api.devin.ai/v1/models"),
+  meta: createOpenAIModelsConfig("https://api.dev.meta.ai/v1/models"),
+  cody: createOpenAIModelsConfig("https://sourcegraph.com/.api/models"),
+  poe: createOpenAIModelsConfig("https://api.poe.com/v1/models"),
+  huggingface: createOpenAIModelsConfig("https://router.huggingface.co/v1/models"),
   kimchi: {
     customResolver: async (connection) => {
       const result = await resolveKimchiModels({

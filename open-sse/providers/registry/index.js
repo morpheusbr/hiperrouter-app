@@ -109,6 +109,10 @@ import p106 from "./ai21.js";
 import p107 from "./upstage.js";
 import p108 from "./scaleway.js";
 import p109 from "./replicate.js";
+import p110 from "./devin.js";
+import p111 from "./meta.js";
+import p112 from "./cody.js";
+import p113 from "./poe.js";
 
 export default [
   p0,
@@ -221,4 +225,8 @@ export default [
   p107,
   p108,
   p109,
+  p110,
+  p111,
+  p112,
+  p113,
 ];
