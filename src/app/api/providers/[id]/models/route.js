@@ -269,6 +269,15 @@ const PROVIDER_MODELS_CONFIG = {
   nvidia: createOpenAIModelsConfig("https://integrate.api.nvidia.com/v1/models"),
   assemblyai: createOpenAIModelsConfig("https://api.assemblyai.com/v1/models"),
   "vercel-ai-gateway": createOpenAIModelsConfig("https://ai-gateway.vercel.sh/v1/models"),
+  sambanova: createOpenAIModelsConfig("https://api.sambanova.ai/v1/models"),
+  deepinfra: createOpenAIModelsConfig("https://api.deepinfra.com/v1/openai/models"),
+  maritaca: createOpenAIModelsConfig("https://chat.maritaca.ai/api/models"),
+  novita: createOpenAIModelsConfig("https://api.novita.ai/v3/openai/models"),
+  lambda: createOpenAIModelsConfig("https://api.lambdalabs.com/v1/models"),
+  ai21: createOpenAIModelsConfig("https://api.ai21.com/studio/v1/models"),
+  upstage: createOpenAIModelsConfig("https://api.upstage.ai/v1/solar/models"),
+  scaleway: createOpenAIModelsConfig("https://api.scaleway.ai/v1/models"),
+  replicate: createOpenAIModelsConfig("https://api.replicate.com/v1/models"),
   kimchi: {
     customResolver: async (connection) => {
       const result = await resolveKimchiModels({

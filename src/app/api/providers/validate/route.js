@@ -370,7 +370,16 @@ export async function POST(request) {
         case "chutes":
         case "xiaomi-mimo":
         case "xiaomi-tokenplan":
-        case "nvidia": {
+        case "nvidia":
+        case "sambanova":
+        case "deepinfra":
+        case "maritaca":
+        case "novita":
+        case "lambda":
+        case "ai21":
+        case "upstage":
+        case "scaleway":
+        case "replicate": {
           const endpoints = {
             ...Object.fromEntries(
               Object.entries(PROVIDERS).filter(([, t]) => t.validateUrl).map(([id, t]) => [id, t.validateUrl])

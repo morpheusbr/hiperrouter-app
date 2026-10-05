@@ -100,6 +100,15 @@ import p97 from "./xiaomi-tokenplan.js";
 import p98 from "./youcom.js";
 import p99 from "./alims-intl.js";
 import p100 from "./opencode-zen.js";
+import p101 from "./sambanova.js";
+import p102 from "./deepinfra.js";
+import p103 from "./maritaca.js";
+import p104 from "./novita.js";
+import p105 from "./lambda.js";
+import p106 from "./ai21.js";
+import p107 from "./upstage.js";
+import p108 from "./scaleway.js";
+import p109 from "./replicate.js";
 
 export default [
   p0,
@@ -203,4 +212,13 @@ export default [
   p98,
   p99,
   p100,
+  p101,
+  p102,
+  p103,
+  p104,
+  p105,
+  p106,
+  p107,
+  p108,
+  p109,
 ];
