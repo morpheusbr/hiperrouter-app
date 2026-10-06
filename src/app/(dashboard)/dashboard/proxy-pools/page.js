@@ -3,11 +3,28 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { Badge, Button, Card, CardSkeleton, Input, Modal, Toggle, ConfirmModal } from "@/shared/components";
 import { useNotificationStore } from "@/store/notificationStore";
+import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 
 function getStatusVariant(status) {
   if (status === "active") return "success";
   if (status === "error") return "error";
   return "default";
+}
+
+function getProxyProtocol(url, type) {
+  if (type === "vercel") return "Vercel";
+  if (type === "cloudflare") return "Cloudflare";
+  if (type === "deno") return "Deno";
+  if (!url) return "HTTP";
+  try {
+    const parsed = new URL(url);
+    const proto = parsed.protocol.replace(":", "").toUpperCase();
+    return proto || "HTTP";
+  } catch {
+    if (url.startsWith("socks5://") || url.startsWith("socks5h://")) return "SOCKS5";
+    if (url.startsWith("https://")) return "HTTPS";
+    return "HTTP";
+  }
 }
 
 function formatDateTime(value) {
@@ -32,6 +49,8 @@ export default function ProxyPoolsPage() {
   const [loading, setLoading] = useState(true);
   const [showFormModal, setShowFormModal] = useState(false);
   const [showBatchImportModal, setShowBatchImportModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportFormat, setExportFormat] = useState("url");
   const [showVercelModal, setShowVercelModal] = useState(false);
   const [showCloudflareModal, setShowCloudflareModal] = useState(false);
   const [showDenoModal, setShowDenoModal] = useState(false);
@@ -51,8 +70,12 @@ export default function ProxyPoolsPage() {
   const [healthProgress, setHealthProgress] = useState({ current: 0, total: 0 });
   const [bulkBusy, setBulkBusy] = useState(false);
   const [confirmState, setConfirmState] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("default");
   const relayMenuRef = useRef(null);
   const notify = useNotificationStore();
+  const { copied, copy } = useCopyToClipboard();
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -175,12 +198,32 @@ export default function ProxyPoolsPage() {
       const data = await res.json();
 
       if (!res.ok) {
+        setProxyPools((prev) =>
+          prev.map((p) =>
+            p.id === proxyPoolId
+              ? { ...p, testStatus: "error", lastTestedAt: new Date().toISOString(), lastError: data.error || "Failed to test proxy" }
+              : p
+          )
+        );
         notify.error(data.error || "Failed to test proxy");
         return;
       }
 
+      setProxyPools((prev) =>
+        prev.map((p) =>
+          p.id === proxyPoolId
+            ? {
+                ...p,
+                testStatus: data.ok ? "active" : "error",
+                lastTestedAt: new Date().toISOString(),
+                latencyMs: data.ok ? (data.elapsedMs || null) : null,
+                lastError: data.ok ? null : (data.error || "Proxy test failed"),
+              }
+            : p
+        )
+      );
       await fetchProxyPools();
-      notify.success(data.ok ? "Proxy test passed" : "Proxy test failed");
+      notify.success(data.ok ? `Proxy test passed (${data.elapsedMs || 0}ms)` : "Proxy test failed");
     } catch (error) {
       console.log("Error testing proxy pool:", error);
       notify.error("Failed to test proxy");
@@ -208,9 +251,127 @@ export default function ProxyPoolsPage() {
     }
   };
 
-  const allSelected = proxyPools.length > 0 && selectedIds.length === proxyPools.length;
-  const toggleSelect = (id) => setSelectedIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
-  const toggleSelectAll = () => setSelectedIds(allSelected ? [] : proxyPools.map((p) => p.id));
+  const stats = useMemo(() => {
+    const total = proxyPools.length;
+    const active = proxyPools.filter((p) => p.isActive === true).length;
+    const errors = proxyPools.filter((p) => p.testStatus === "error" || p.lastError).length;
+    const testedWithLatency = proxyPools.filter(
+      (p) => typeof p.latencyMs === "number" && p.latencyMs > 0
+    );
+    const avgLatency =
+      testedWithLatency.length > 0
+        ? Math.round(
+            testedWithLatency.reduce((acc, p) => acc + p.latencyMs, 0) /
+              testedWithLatency.length
+          )
+        : null;
+    return { total, active, errors, avgLatency };
+  }, [proxyPools]);
+
+  const filteredAndSortedPools = useMemo(() => {
+    let list = [...proxyPools];
+
+    if (statusFilter === "active") {
+      list = list.filter((p) => p.isActive === true);
+    } else if (statusFilter === "inactive") {
+      list = list.filter((p) => !p.isActive);
+    } else if (statusFilter === "error") {
+      list = list.filter((p) => p.testStatus === "error" || p.lastError);
+    } else if (statusFilter === "relay") {
+      list = list.filter((p) => p.type === "vercel" || p.type === "cloudflare" || p.type === "deno");
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter(
+        (p) =>
+          (p.name && p.name.toLowerCase().includes(q)) ||
+          (p.proxyUrl && p.proxyUrl.toLowerCase().includes(q)) ||
+          (p.noProxy && p.noProxy.toLowerCase().includes(q)) ||
+          (p.type && p.type.toLowerCase().includes(q))
+      );
+    }
+
+    if (sortBy === "latency-asc") {
+      list.sort((a, b) => {
+        const latA = typeof a.latencyMs === "number" ? a.latencyMs : 999999;
+        const latB = typeof b.latencyMs === "number" ? b.latencyMs : 999999;
+        return latA - latB;
+      });
+    } else if (sortBy === "latency-desc") {
+      list.sort((a, b) => {
+        const latA = typeof a.latencyMs === "number" ? a.latencyMs : -1;
+        const latB = typeof b.latencyMs === "number" ? b.latencyMs : -1;
+        return latB - latA;
+      });
+    } else if (sortBy === "name-asc") {
+      list.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    } else if (sortBy === "bound-desc") {
+      list.sort((a, b) => (b.boundConnectionCount || 0) - (a.boundConnectionCount || 0));
+    }
+
+    return list;
+  }, [proxyPools, statusFilter, searchQuery, sortBy]);
+
+  const exportTargetPools = useMemo(() => {
+    if (selectedIds.length > 0) {
+      return proxyPools.filter((p) => selectedIds.includes(p.id));
+    }
+    return filteredAndSortedPools;
+  }, [selectedIds, proxyPools, filteredAndSortedPools]);
+
+  const exportText = useMemo(() => {
+    return exportTargetPools
+      .map((p) => {
+        if (exportFormat === "credentials") {
+          try {
+            const u = new URL(p.proxyUrl);
+            if (u.username && u.password) {
+              return `${u.hostname}:${u.port}:${decodeURIComponent(u.username)}:${decodeURIComponent(u.password)}`;
+            }
+            return `${u.hostname}:${u.port}`;
+          } catch {
+            return p.proxyUrl;
+          }
+        }
+        return p.proxyUrl;
+      })
+      .filter(Boolean)
+      .join("\n");
+  }, [exportTargetPools, exportFormat]);
+
+  const handleDownloadExport = () => {
+    const blob = new Blob([exportText], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `hiperrouter-proxies-${new Date().toISOString().slice(0, 10)}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    notify.success("Export file downloaded");
+  };
+
+  const allSelected =
+    filteredAndSortedPools.length > 0 &&
+    filteredAndSortedPools.every((p) => selectedIds.includes(p.id));
+
+  const toggleSelect = (id) =>
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+
+  const toggleSelectAll = () =>
+    setSelectedIds((prev) => {
+      if (allSelected) {
+        const currentFilteredIds = new Set(filteredAndSortedPools.map((p) => p.id));
+        return prev.filter((id) => !currentFilteredIds.has(id));
+      }
+      const combined = new Set([...prev, ...filteredAndSortedPools.map((p) => p.id)]);
+      return Array.from(combined);
+    });
+
   const clearSelection = () => setSelectedIds([]);
 
   const bulkSetActive = async (isActive) => {
@@ -267,7 +428,7 @@ export default function ProxyPoolsPage() {
   const handleHealthCheck = async () => {
     const targets = selectedIds.length > 0
       ? proxyPools.filter((p) => selectedIds.includes(p.id))
-      : proxyPools;
+      : filteredAndSortedPools;
     if (targets.length === 0) return;
     setHealthChecking(true);
     setHealthProgress({ current: 0, total: targets.length });
@@ -283,7 +444,37 @@ export default function ProxyPoolsPage() {
         try {
           const res = await fetch(`/api/proxy-pools/${pool.id}/test`, { method: "POST" });
           const data = await res.json();
-          if (res.ok && data.ok) alive += 1; else deadIds.push(pool.id);
+          if (res.ok && data.ok) {
+            alive += 1;
+            setProxyPools((prev) =>
+              prev.map((p) =>
+                p.id === pool.id
+                  ? {
+                      ...p,
+                      testStatus: "active",
+                      lastTestedAt: new Date().toISOString(),
+                      latencyMs: data.elapsedMs || null,
+                      lastError: null,
+                    }
+                  : p
+              )
+            );
+          } else {
+            deadIds.push(pool.id);
+            setProxyPools((prev) =>
+              prev.map((p) =>
+                p.id === pool.id
+                  ? {
+                      ...p,
+                      testStatus: "error",
+                      lastTestedAt: new Date().toISOString(),
+                      latencyMs: null,
+                      lastError: data?.error || "Test failed",
+                    }
+                  : p
+              )
+            );
+          }
         } catch {
           deadIds.push(pool.id);
         } finally {
@@ -558,11 +749,6 @@ export default function ProxyPoolsPage() {
     }
   };
 
-  const activeCount = useMemo(
-    () => proxyPools.filter((pool) => pool.isActive === true).length,
-    [proxyPools]
-  );
-
   if (loading) {
     return (
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-1 sm:gap-6 sm:px-0">
@@ -632,13 +818,119 @@ export default function ProxyPoolsPage() {
           <Button size="sm" variant="secondary" icon="upload" onClick={openBatchImportModal}>
             Batch Import
           </Button>
+          <Button size="sm" variant="secondary" icon="download" onClick={() => setShowExportModal(true)}>
+            Export
+          </Button>
           <Button size="sm" icon="add" onClick={openCreateModal}>Add Proxy Pool</Button>
         </div>
       </div>
 
+      {/* Metric Summary Cards */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+        <Card className="flex min-w-0 flex-col gap-1 p-4">
+          <div className="flex items-center justify-between text-text-muted">
+            <span className="text-xs uppercase font-semibold">Total Proxies</span>
+            <span className="material-symbols-outlined text-[18px]">dns</span>
+          </div>
+          <span className="truncate text-2xl font-bold">{stats.total}</span>
+        </Card>
+        <Card className="flex min-w-0 flex-col gap-1 p-4">
+          <div className="flex items-center justify-between text-green-500">
+            <span className="text-xs uppercase font-semibold text-text-muted">Active</span>
+            <span className="material-symbols-outlined text-[18px]">check_circle</span>
+          </div>
+          <span className="truncate text-2xl font-bold text-green-500">{stats.active}</span>
+        </Card>
+        <Card className="flex min-w-0 flex-col gap-1 p-4">
+          <div className="flex items-center justify-between text-red-500">
+            <span className="text-xs uppercase font-semibold text-text-muted">Errors / Dead</span>
+            <span className="material-symbols-outlined text-[18px]">error</span>
+          </div>
+          <span className="truncate text-2xl font-bold text-red-500">{stats.errors}</span>
+        </Card>
+        <Card className="flex min-w-0 flex-col gap-1 p-4">
+          <div className="flex items-center justify-between text-brand-400">
+            <span className="text-xs uppercase font-semibold text-text-muted">Avg Latency</span>
+            <span className="material-symbols-outlined text-[18px]">bolt</span>
+          </div>
+          <span className="truncate text-2xl font-bold text-brand-400">
+            {stats.avgLatency !== null ? `${stats.avgLatency}ms` : "—"}
+          </span>
+        </Card>
+      </div>
+
       <Card>
+        {/* Search, Filter Pills & Sort Bar */}
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative flex-1">
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[18px] text-text-muted pointer-events-none">
+              search
+            </span>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by name, URL, or no-proxy..."
+              className="w-full rounded-lg border border-border/80 bg-surface-2 py-2 pl-9 pr-8 text-xs text-text-main placeholder:text-text-muted focus:border-brand-500/70 focus:outline-none focus:ring-1 focus:ring-brand-500/50"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-main"
+              >
+                <span className="material-symbols-outlined text-[16px]">close</span>
+              </button>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Filter Pills */}
+            <div className="flex items-center rounded-lg border border-border/80 bg-surface-2 p-0.5 text-xs">
+              {[
+                { id: "all", label: "All" },
+                { id: "active", label: "Active" },
+                { id: "inactive", label: "Inactive" },
+                { id: "error", label: "Error" },
+                { id: "relay", label: "Relays" },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setStatusFilter(tab.id)}
+                  className={`rounded-md px-2.5 py-1 font-medium transition-colors ${
+                    statusFilter === tab.id
+                      ? "bg-bg text-primary shadow-sm"
+                      : "text-text-muted hover:text-text-main"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Sort Select */}
+            <div className="relative">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="appearance-none rounded-lg border border-border/80 bg-surface-2 py-1.5 pl-3 pr-8 text-xs text-text-main focus:border-brand-500/70 focus:outline-none focus:ring-1 focus:ring-brand-500/50"
+              >
+                <option value="default">Sort: Default</option>
+                <option value="latency-asc">⚡ Lowest Latency</option>
+                <option value="latency-desc">⚡ Highest Latency</option>
+                <option value="name-asc">Name (A-Z)</option>
+                <option value="bound-desc">Most Bound</option>
+              </select>
+              <span className="material-symbols-outlined pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[16px] text-text-muted">
+                expand_more
+              </span>
+            </div>
+          </div>
+        </div>
+
         <div className="mb-4 flex flex-wrap items-center gap-2">
-          {proxyPools.length > 0 && (
+          {filteredAndSortedPools.length > 0 && (
             <label className="flex items-center gap-1.5 text-xs text-text-muted cursor-pointer">
               <input
                 type="checkbox"
@@ -649,22 +941,27 @@ export default function ProxyPoolsPage() {
               {allSelected ? "Unselect all" : "Select all"}
             </label>
           )}
-          <Badge variant="default">Total: {proxyPools.length}</Badge>
-          <Badge variant="success">Active: {activeCount}</Badge>
+          <Badge variant="default">Showing: {filteredAndSortedPools.length}/{proxyPools.length}</Badge>
+          <Badge variant="success">Active: {stats.active}</Badge>
+          {statusFilter !== "all" && (
+            <Badge variant="neutral" size="sm">
+              Filter: {statusFilter}
+            </Badge>
+          )}
         </div>
 
         {(selectedIds.length > 0 || healthChecking) && (
           <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2">
             <span className="material-symbols-outlined text-[18px] text-primary">checklist</span>
             <span className="text-xs font-medium text-primary">
-              {selectedIds.length > 0 ? `${selectedIds.length} selected` : "All pools"}
+              {selectedIds.length > 0 ? `${selectedIds.length} selected` : "All matching pools"}
             </span>
             <div className="ml-auto flex flex-wrap items-center gap-2">
               <Button
                 size="sm"
                 icon={healthChecking ? "progress_activity" : "health_and_safety"}
                 onClick={handleHealthCheck}
-                disabled={healthChecking || bulkBusy || proxyPools.length === 0}
+                disabled={healthChecking || bulkBusy || filteredAndSortedPools.length === 0}
               >
                 {healthChecking ? `Checking ${healthProgress.current}/${healthProgress.total}` : "Health Check"}
               </Button>
@@ -696,9 +993,26 @@ export default function ProxyPoolsPage() {
             </p>
             <Button icon="add" onClick={openCreateModal}>Add Proxy Pool</Button>
           </div>
+        ) : filteredAndSortedPools.length === 0 ? (
+          <div className="text-center py-10">
+            <p className="text-text-main font-medium mb-1">No matching proxies</p>
+            <p className="text-sm text-text-muted mb-4">
+              No proxies match your search &ldquo;{searchQuery}&rdquo; and filter criteria.
+            </p>
+            <Button
+              variant="secondary"
+              icon="filter_alt_off"
+              onClick={() => {
+                setSearchQuery("");
+                setStatusFilter("all");
+              }}
+            >
+              Clear Filters
+            </Button>
+          </div>
         ) : (
           <div className="flex flex-col divide-y divide-black/[0.04] dark:divide-white/[0.05]">
-            {proxyPools.map((pool) => (
+            {filteredAndSortedPools.map((pool) => (
               <div key={pool.id} className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-start gap-3 min-w-0 flex-1">
                   <input
@@ -708,32 +1022,38 @@ export default function ProxyPoolsPage() {
                     className="mt-1 size-4 shrink-0 rounded border-black/20 dark:border-white/20"
                   />
                   <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="min-w-0 max-w-full truncate text-sm font-medium sm:max-w-[18rem]">{pool.name}</p>
-                    <Badge variant={getStatusVariant(pool.testStatus)} size="sm" dot>
-                      {pool.testStatus || "unknown"}
-                    </Badge>
-                    <Badge variant={pool.isActive ? "success" : "default"} size="sm">
-                      {pool.isActive ? "active" : "inactive"}
-                    </Badge>
-                    {pool.type === "vercel" && (
-                      <Badge variant="default" size="sm">vercel relay</Badge>
-                    )}
-                    {pool.type === "cloudflare" && (
-                      <Badge variant="default" size="sm">cloudflare relay</Badge>
-                    )}
-                    <Badge variant="default" size="sm">
-                      {pool.boundConnectionCount || 0} bound
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-text-muted truncate mt-1">{pool.proxyUrl}</p>
-                  {pool.noProxy ? (
-                    <p className="text-xs text-text-muted truncate">No proxy: {pool.noProxy}</p>
-                  ) : null}
-                  <p className="text-[11px] text-text-muted mt-1">
-                    Last tested: {formatDateTime(pool.lastTestedAt)}
-                    {pool.lastError ? ` · ${pool.lastError}` : ""}
-                  </p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="min-w-0 max-w-full truncate text-sm font-medium sm:max-w-[18rem]">{pool.name}</p>
+                      <Badge variant={getStatusVariant(pool.testStatus)} size="sm" dot>
+                        {pool.testStatus || "unknown"}
+                      </Badge>
+                      <Badge variant={pool.isActive ? "success" : "default"} size="sm">
+                        {pool.isActive ? "active" : "inactive"}
+                      </Badge>
+                      <Badge variant="default" size="sm">
+                        {getProxyProtocol(pool.proxyUrl, pool.type)}
+                      </Badge>
+                      {pool.latencyMs ? (
+                        <Badge
+                          variant={pool.latencyMs < 350 ? "success" : pool.latencyMs < 900 ? "warning" : "error"}
+                          size="sm"
+                          title={`Latency: ${pool.latencyMs}ms`}
+                        >
+                          ⚡ {pool.latencyMs}ms
+                        </Badge>
+                      ) : null}
+                      <Badge variant="default" size="sm">
+                        {pool.boundConnectionCount || 0} bound
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-text-muted truncate mt-1">{pool.proxyUrl}</p>
+                    {pool.noProxy ? (
+                      <p className="text-xs text-text-muted truncate">No proxy: {pool.noProxy}</p>
+                    ) : null}
+                    <p className="text-[11px] text-text-muted mt-1">
+                      Last tested: {formatDateTime(pool.lastTestedAt)}
+                      {pool.lastError ? ` · ${pool.lastError}` : ""}
+                    </p>
                   </div>
                 </div>
 
@@ -746,7 +1066,7 @@ export default function ProxyPoolsPage() {
                   />
                   <button
                     onClick={() => handleTest(pool.id)}
-                    className="p-2 rounded hover:bg-black/5 dark:hover:bg-white/5 text-text-muted hover:text-primary"
+                    className="p-2 rounded hover:bg-black/5 dark:hover:bg-white/5 text-text-muted hover:text-primary transition-colors"
                     title="Test proxy"
                     disabled={testingId === pool.id}
                   >
@@ -758,15 +1078,27 @@ export default function ProxyPoolsPage() {
                     </span>
                   </button>
                   <button
+                    onClick={() => {
+                      copy(pool.proxyUrl, pool.id);
+                      notify.success("Proxy URL copied");
+                    }}
+                    className="p-2 rounded hover:bg-black/5 dark:hover:bg-white/5 text-text-muted hover:text-primary transition-colors"
+                    title={copied === pool.id ? "Copied!" : "Copy Proxy URL"}
+                  >
+                    <span className="material-symbols-outlined text-[18px]">
+                      {copied === pool.id ? "check" : "content_copy"}
+                    </span>
+                  </button>
+                  <button
                     onClick={() => openEditModal(pool)}
-                    className="p-2 rounded hover:bg-black/5 dark:hover:bg-white/5 text-text-muted hover:text-primary"
+                    className="p-2 rounded hover:bg-black/5 dark:hover:bg-white/5 text-text-muted hover:text-primary transition-colors"
                     title="Edit"
                   >
                     <span className="material-symbols-outlined text-[18px]">edit</span>
                   </button>
                   <button
                     onClick={() => handleDelete(pool)}
-                    className="p-2 rounded hover:bg-red-500/10 text-red-500"
+                    className="p-2 rounded hover:bg-red-500/10 text-red-500 transition-colors"
                     title="Delete"
                   >
                     <span className="material-symbols-outlined text-[18px]">delete</span>
@@ -1044,6 +1376,85 @@ export default function ProxyPoolsPage() {
             </Button>
             <Button fullWidth variant="ghost" onClick={closeFormModal} disabled={saving}>
               Cancel
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Export Modal */}
+      <Modal
+        isOpen={showExportModal}
+        title="Export Proxies"
+        onClose={() => setShowExportModal(false)}
+      >
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between text-xs text-text-muted">
+              <span>
+                Exporting {exportTargetPools.length} {selectedIds.length > 0 ? "selected" : "matching"} {exportTargetPools.length === 1 ? "proxy" : "proxies"}
+              </span>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setExportFormat("url")}
+                  className={`px-2 py-0.5 rounded text-xs transition-colors ${
+                    exportFormat === "url"
+                      ? "bg-primary/15 text-primary font-medium"
+                      : "text-text-muted hover:text-text-main"
+                  }`}
+                >
+                  Full URL
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setExportFormat("credentials")}
+                  className={`px-2 py-0.5 rounded text-xs transition-colors ${
+                    exportFormat === "credentials"
+                      ? "bg-primary/15 text-primary font-medium"
+                      : "text-text-muted hover:text-text-main"
+                  }`}
+                >
+                  Host:Port[:User:Pass]
+                </button>
+              </div>
+            </div>
+            <textarea
+              readOnly
+              value={exportText}
+              rows={9}
+              className="w-full font-mono text-xs p-3 rounded-lg border border-border/80 bg-surface-2 text-text-main focus:outline-none"
+              placeholder="No proxies to export"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <Button
+              fullWidth
+              variant="secondary"
+              icon={copied === "export-all" ? "check" : "content_copy"}
+              onClick={() => {
+                copy(exportText, "export-all");
+                notify.success("Copied to clipboard");
+              }}
+              disabled={!exportText}
+            >
+              {copied === "export-all" ? "Copied" : "Copy All"}
+            </Button>
+            <Button
+              fullWidth
+              variant="secondary"
+              icon="download"
+              onClick={handleDownloadExport}
+              disabled={!exportText}
+            >
+              Download .txt
+            </Button>
+            <Button
+              fullWidth
+              variant="ghost"
+              onClick={() => setShowExportModal(false)}
+            >
+              Close
             </Button>
           </div>
         </div>

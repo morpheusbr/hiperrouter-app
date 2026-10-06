@@ -53,6 +53,7 @@ export async function POST(request, { params }) {
       lastTestedAt: now,
       lastError: result.ok ? null : (result.error || `Proxy test failed with status ${result.status}`),
       isActive: result.ok,
+      latencyMs: result.ok ? (result.elapsedMs || 0) : null,
     });
 
     return NextResponse.json({

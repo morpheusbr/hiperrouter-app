@@ -88,9 +88,9 @@ describe("grokBuildConfig", () => {
       },
     });
 
-    expect(result.match(/^\[model\.HiperRouter\]$/gm)).toHaveLength(1);
-    expect(result.match(/^\[model\.HiperRouter-general-purpose\]$/gm)).toHaveLength(1);
-    expect(result.match(/^\[model\.HiperRouter-explore\]$/gm)).toHaveLength(1);
+    expect(result.match(/^\[model\.hiperrouter\]$/gm)).toHaveLength(1);
+    expect(result.match(/^\[model\.hiperrouter-general-purpose\]$/gm)).toHaveLength(1);
+    expect(result.match(/^\[model\.hiperrouter-explore\]$/gm)).toHaveLength(1);
     expect(result.match(/^# hiperrouter-prev-subagent-explore/gm)).toHaveLength(1);
     expect(parseGrokBuildConfig(result).model).toMatchObject({
       model: "cc/claude-opus-4.8",

@@ -3,12 +3,55 @@ import path from 'path';
 import os from 'os';
 import fs from 'node:fs';
 
-/** Load SQLite driver via sql.js (bypasses glibc 2.29 native binding errors on CentOS 8) */
+/** Load SQLite driver via node:sqlite (native Node >= 22), better-sqlite3, or sql.js */
 async function loadSqlDriver() {
+  try {
+    const { DatabaseSync } = await import('node:sqlite');
+    return class NodeSqliteDriver {
+      #db;
+      constructor(file) {
+        this.#db = new DatabaseSync(file, { readOnly: true });
+      }
+      prepare(sql) {
+        const db = this.#db;
+        return {
+          get(...p) {
+            return db.prepare(sql).get(...p);
+          },
+          all(...p) {
+            return db.prepare(sql).all(...p);
+          },
+        };
+      }
+      close() {
+        this.#db.close();
+      }
+    };
+  } catch {
+    // fallback
+  }
+
+  try {
+    const Database = (await import('better-sqlite3')).default;
+    return class BetterSqliteDriver {
+      #db;
+      constructor(file) {
+        this.#db = new Database(file, { readonly: true, fileMustExist: true });
+      }
+      prepare(sql) {
+        return this.#db.prepare(sql);
+      }
+      close() {
+        this.#db.close();
+      }
+    };
+  } catch {
+    // fallback
+  }
+
   const sqlJsMod = await import('sql.js');
   const initSqlJs = sqlJsMod.default ?? sqlJsMod;
-  const sqlJs = await initSqlJs({ locateFile: f => new URL(`sql.js/dist/${f}`, import.meta.url).pathname });
-  // Wrap sql.js to look like better-sqlite3 API (get()/all() only)
+  const sqlJs = await initSqlJs();
   return class SqlJsLite {
     #db;
     constructor(file) {
@@ -18,10 +61,27 @@ async function loadSqlDriver() {
     }
     prepare(sql) {
       const db = this.#db;
-      return { get(...p) { const s = db.prepare(sql); if (p.length) s.bind(p); const r = s.getAsObject(); s.free(); return r; },
-               all(...p) { const s = db.prepare(sql); if (p.length) s.bind(p); const rows = []; while (s.step()) rows.push(s.getAsObject()); s.free(); return rows; } };
+      return {
+        get(...p) {
+          const s = db.prepare(sql);
+          if (p.length) s.bind(p);
+          const r = s.getAsObject();
+          s.free();
+          return r;
+        },
+        all(...p) {
+          const s = db.prepare(sql);
+          if (p.length) s.bind(p);
+          const rows = [];
+          while (s.step()) rows.push(s.getAsObject());
+          s.free();
+          return rows;
+        },
+      };
     }
-    close() { this.#db.close(); }
+    close() {
+      this.#db.close();
+    }
   };
 }
 
@@ -70,42 +130,40 @@ export async function GET() {
 
     const Database = await loadSqlDriver();
     const db = new Database(dbPath);
-    db.readonly = true;
+    let statsRow, topCommands, history;
+    try {
+      statsRow = db.prepare(`
+        SELECT
+          COUNT(id) as total_commands,
+          SUM(input_tokens) as input_tokens,
+          SUM(output_tokens) as output_tokens,
+          SUM(saved_tokens) as saved_tokens,
+          SUM(exec_time_ms) as total_exec_time_ms
+        FROM commands
+      `).get();
 
-    // Aggregate stats
-    const statsRow = db.prepare(`
-      SELECT
-        COUNT(id) as total_commands,
-        SUM(input_tokens) as input_tokens,
-        SUM(output_tokens) as output_tokens,
-        SUM(saved_tokens) as saved_tokens,
-        SUM(exec_time_ms) as total_exec_time_ms
-      FROM commands
-    `).get();
+      topCommands = db.prepare(`
+        SELECT
+          original_cmd,
+          COUNT(id) as count,
+          SUM(saved_tokens) as saved,
+          AVG(savings_pct) as avg_pct,
+          SUM(exec_time_ms) as total_time
+        FROM commands
+        GROUP BY original_cmd
+        ORDER BY saved DESC
+        LIMIT 10
+      `).all();
 
-    // Top commands
-    const topCommands = db.prepare(`
-      SELECT
-        original_cmd,
-        COUNT(id) as count,
-        SUM(saved_tokens) as saved,
-        AVG(savings_pct) as avg_pct,
-        SUM(exec_time_ms) as total_time
-      FROM commands
-      GROUP BY original_cmd
-      ORDER BY saved DESC
-      LIMIT 10
-    `).all();
-
-    // Recent history
-    const history = db.prepare(`
-      SELECT id, timestamp, original_cmd, saved_tokens, savings_pct, exec_time_ms
-      FROM commands
-      ORDER BY timestamp DESC
-      LIMIT 50
-    `).all();
-
-    db.close();
+      history = db.prepare(`
+        SELECT id, timestamp, original_cmd, saved_tokens, savings_pct, exec_time_ms
+        FROM commands
+        ORDER BY timestamp DESC
+        LIMIT 50
+      `).all();
+    } finally {
+      db.close();
+    }
 
     return NextResponse.json({
       success: true,

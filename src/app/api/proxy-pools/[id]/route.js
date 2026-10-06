@@ -16,6 +16,7 @@ const UpdateProxyPoolSchema = z.object({
   isActive: z.boolean().optional(),
   strictProxy: z.boolean().optional(),
   type: z.enum(["http", "vercel", "cloudflare", "deno"]).optional(),
+  latencyMs: z.number().nullable().optional(),
 });
 
 function countBoundConnections(connections = [], proxyPoolId) {

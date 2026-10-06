@@ -213,9 +213,24 @@ export function openaiToClaudeResponse(chunk, state) {
       if (tc.function?.arguments) {
         const toolInfo = state.toolCalls.get(idx);
         if (toolInfo) {
-          // Buffer args instead of streaming — sanitize at finish to fix bad params
+          // Buffer args — sanitize as soon as JSON is complete or at finish
           if (!state.toolArgBuffers) state.toolArgBuffers = new Map();
-          state.toolArgBuffers.set(idx, (state.toolArgBuffers.get(idx) || "") + tc.function.arguments);
+          const currentBuffer = (state.toolArgBuffers.get(idx) || "") + tc.function.arguments;
+          state.toolArgBuffers.set(idx, currentBuffer);
+
+          try {
+            JSON.parse(currentBuffer);
+            const sanitized = sanitizeToolArgs(toolInfo.name, currentBuffer);
+            results.push({
+              type: "content_block_delta",
+              index: toolInfo.blockIndex,
+              delta: { type: "input_json_delta", partial_json: sanitized }
+            });
+            if (!state.toolArgEmitted) state.toolArgEmitted = new Set();
+            state.toolArgEmitted.add(idx);
+          } catch {
+            // Incomplete JSON chunk — wait for more chunks or finish_reason
+          }
         }
       }
     }
@@ -227,15 +242,17 @@ export function openaiToClaudeResponse(chunk, state) {
     stopTextBlock(state, results);
 
     for (const [idx, toolInfo] of state.toolCalls) {
-      // Emit buffered + sanitized args as single delta before stop
-      const buffered = state.toolArgBuffers?.get(idx);
-      if (buffered) {
-        const sanitized = sanitizeToolArgs(toolInfo.name, buffered);
-        results.push({
-          type: "content_block_delta",
-          index: toolInfo.blockIndex,
-          delta: { type: "input_json_delta", partial_json: sanitized }
-        });
+      // Emit buffered + sanitized args as single delta before stop if not already emitted
+      if (!state.toolArgEmitted?.has(idx)) {
+        const buffered = state.toolArgBuffers?.get(idx);
+        if (buffered) {
+          const sanitized = sanitizeToolArgs(toolInfo.name, buffered);
+          results.push({
+            type: "content_block_delta",
+            index: toolInfo.blockIndex,
+            delta: { type: "input_json_delta", partial_json: sanitized }
+          });
+        }
       }
       results.push({
         type: "content_block_stop",
