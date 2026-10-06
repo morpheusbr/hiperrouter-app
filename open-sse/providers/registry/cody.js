@@ -12,10 +12,8 @@ export default {
       apiKeyUrl: "https://sourcegraph.com/user/settings/tokens",
     },
   },
-  category: "oauth",
-  authType: "oauth",
-  hasOAuth: true,
-  authModes: ["oauth", "apikey"],
+  category: "apikey",
+  authType: "apikey",
   transport: {
     baseUrl: "https://sourcegraph.com/.api/chat/completions",
     validateUrl: "https://sourcegraph.com/.api/models",

@@ -49,11 +49,12 @@ function connectionEnvelope(connection) {
 
 /** Sanitize error messages to prevent leaking sensitive tokens */
 function sanitizeOAuthError(error) {
-  const errorMessage = error.message.replace(/[a-zA-Z0-9]{32,}/g, "***TOKEN***");
+  const errorMessage = (error?.message || String(error)).replace(/[a-zA-Z0-9]{32,}/g, "***TOKEN***");
+  const isUnknownProvider = /unknown provider/i.test(errorMessage);
   return NextResponse.json({
-    error: "OAuth error",
+    error: isUnknownProvider ? "Unsupported OAuth provider" : "OAuth error",
     message: errorMessage
-  }, { status: 500 });
+  }, { status: isUnknownProvider ? 400 : 500 });
 }
 
 async function completeXaiManualCode(code, state) {
@@ -100,8 +101,15 @@ export async function GET(request, { params }) {
       const reservedParams = new Set(["redirect_uri"]);
       const meta = {};
       searchParams.forEach((value, key) => { if (!reservedParams.has(key)) meta[key] = value; });
-      const authData = await generateAuthData(provider, redirectUri, Object.keys(meta).length ? meta : undefined);
-      return NextResponse.json(authData);
+      try {
+        const authData = await generateAuthData(provider, redirectUri, Object.keys(meta).length ? meta : undefined);
+        return NextResponse.json(authData);
+      } catch (err) {
+        if (/unknown provider/i.test(err?.message)) {
+          return NextResponse.json({ error: `OAuth is not supported for ${provider}` }, { status: 400 });
+        }
+        throw err;
+      }
     }
 
     if (action === "start-proxy") {

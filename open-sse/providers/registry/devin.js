@@ -9,13 +9,11 @@ export default {
     textIcon: "DEV",
     website: "https://devin.ai",
     notice: {
-      signupUrl: "https://devin.ai/cli",
+      apiKeyUrl: "https://app.devin.ai/settings/keys",
     },
   },
-  category: "oauth",
-  authType: "oauth",
-  hasOAuth: true,
-  authModes: ["oauth", "apikey"],
+  category: "apikey",
+  authType: "apikey",
   transport: {
     baseUrl: "https://api.devin.ai/v1/chat/completions",
     validateUrl: "https://api.devin.ai/v1/models",

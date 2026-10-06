@@ -10,13 +10,11 @@ export default {
     textIcon: "MUSE",
     website: "https://dev.meta.ai",
     notice: {
-      signupUrl: "https://dev.meta.ai/docs/overview",
+      apiKeyUrl: "https://dev.meta.ai/docs/overview",
     },
   },
-  category: "oauth",
-  authType: "oauth",
-  hasOAuth: true,
-  authModes: ["oauth", "apikey"],
+  category: "apikey",
+  authType: "apikey",
   transport: {
     baseUrl: "https://api.dev.meta.ai/v1/chat/completions",
     validateUrl: "https://api.dev.meta.ai/v1/models",

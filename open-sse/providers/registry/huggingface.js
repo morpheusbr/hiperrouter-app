@@ -19,8 +19,6 @@ export default {
   },
   category: "apikey",
   authType: "apikey",
-  hasOAuth: true,
-  authModes: ["oauth", "apikey"],
   hiddenKinds: [
     "tts",
   ],
