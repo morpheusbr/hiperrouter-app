@@ -18,21 +18,60 @@ const SETTINGS_RESPONSE_HEADERS = {
 // Secrets must never be mass-assigned from request body (CWE-915)
 const PROTECTED_SETTING_KEYS = ["password", "mitmSudoEncrypted"];
 
-const SettingsPatchSchema = z.object({
-  newPassword: z.string().optional(),
-  currentPassword: z.string().optional(),
-  oidcClientSecret: z.string().optional(),
-  oidcIssuerUrl: z.union([safeUrlSchema, z.literal(""), z.string().trim().length(0)]).optional(),
-  oidcClientId: z.string().optional(),
-  outboundProxyEnabled: z.boolean().optional(),
-  outboundProxyUrl: z.union([safeUrlSchema, z.literal(""), z.string().trim().length(0)]).optional(),
-  outboundNoProxy: z.string().optional(),
-  comboStrategy: z.string().optional(),
-  comboStickyRoundRobinLimit: z.number().optional(),
-  comboStrategies: z.record(z.any()).optional(),
-  claudeAutoPing: z.boolean().optional(),
-  codexAutoPing: z.boolean().optional(),
-}).passthrough();
+const ALLOWED_STATIC_KEYS = new Set([
+  "newPassword", "currentPassword",
+  "oidcClientSecret", "oidcIssuerUrl", "oidcClientId", "oidcScopes", "oidcLoginLabel",
+  "outboundProxyEnabled", "outboundProxyUrl", "proxyUrl", "outboundNoProxy",
+  "comboStrategy", "fallbackStrategy", "comboStickyRoundRobinLimit", "stickyRoundRobinLimit",
+  "comboStrategies", "providerStrategies", "providerThinking", "quotaVisibility", "providerLimits",
+  "claudeAutoPing", "codexAutoPing", "openaiAutoPing", "ccFilterNaming",
+  "cloudEnabled", "tunnelEnabled", "tunnelUrl", "tunnelProvider", "tailscaleEnabled", "tailscaleUrl", "tunnelDashboardAccess",
+  "requireLogin", "requireApiKey", "authMode",
+  "enableObservability", "observabilityMaxRecords", "observabilityBatchSize", "observabilityFlushIntervalMs", "observabilityMaxJsonSize",
+  "mitmRouterBaseUrl", "dnsToolEnabled", "rtkEnabled",
+  "headroomEnabled", "headroomUrl", "headroomCompressUserMessages",
+  "cavemanEnabled", "cavemanLevel", "ponytailEnabled", "ponytailLevel",
+  "pxpipeEnabled", "pxpipeAutoInstall", "pxpipeMinChars", "pxpipeTimeoutMs"
+]);
+
+function isAllowedSettingKey(key) {
+  if (ALLOWED_STATIC_KEYS.has(key)) return true;
+  if (key.startsWith("providerLimits_") || key.endsWith("AutoPing")) return true;
+  return false;
+}
+
+const SettingsPatchSchema = z.record(z.any()).superRefine((obj, ctx) => {
+  for (const key of Object.keys(obj)) {
+    if (PROTECTED_SETTING_KEYS.includes(key)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Setting '${key}' cannot be modified directly via settings API`,
+        path: [key],
+      });
+    } else if (!isAllowedSettingKey(key)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Unknown or disallowed setting: '${key}'`,
+        path: [key],
+      });
+    }
+  }
+
+  // Strict URL safety checks for proxy and oidc endpoints
+  for (const urlKey of ["outboundProxyUrl", "proxyUrl", "oidcIssuerUrl"]) {
+    const val = obj[urlKey];
+    if (typeof val === "string" && val.trim().length > 0) {
+      const res = safeUrlSchema.safeParse(val);
+      if (!res.success) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Invalid ${urlKey}: ${res.error.issues[0]?.message || "URL rejected"}`,
+          path: [urlKey],
+        });
+      }
+    }
+  }
+});
 
 
 export async function GET() {

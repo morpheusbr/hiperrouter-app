@@ -4,11 +4,29 @@ import { getConsistentMachineId } from "@/shared/utils/machineId";
 
 export const dynamic = "force-dynamic";
 
+const KEYS_RESPONSE_HEADERS = {
+  "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+  "Pragma": "no-cache",
+  "Expires": "0",
+};
+
+function maskApiKey(fullKey) {
+  if (!fullKey || fullKey.length <= 10) return fullKey || "";
+  return fullKey.slice(0, 6) + "•".repeat(Math.max(0, fullKey.length - 10)) + fullKey.slice(-4);
+}
+
 // GET /api/keys - List API keys
-export async function GET() {
+export async function GET(request) {
   try {
     const keys = await getApiKeys();
-    return NextResponse.json({ keys });
+    const shouldMask = request?.nextUrl?.searchParams?.get("masked") === "true" ||
+      (request?.url && new URL(request.url).searchParams.get("masked") === "true");
+
+    const payload = shouldMask
+      ? keys.map((k) => ({ ...k, key: maskApiKey(k.key) }))
+      : keys;
+
+    return NextResponse.json({ keys: payload }, { headers: KEYS_RESPONSE_HEADERS });
   } catch (error) {
     console.log("Error fetching keys:", error);
     return NextResponse.json({ error: "Failed to fetch keys" }, { status: 500 });

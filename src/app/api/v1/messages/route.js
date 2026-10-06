@@ -1,6 +1,7 @@
 import { handleChat } from "@/sse/handlers/chat.js";
 import { checkRateLimit } from "@/lib/network/rateLimiter";
 import { initTranslators } from "open-sse/translator/index.js";
+import { isLocalRequest } from "@/dashboardGuard";
 
 let initialized = false;
 
@@ -33,8 +34,8 @@ export async function OPTIONS() {
 export async function POST(request) {
   // Apply Rate Limiting & Exponential Backoff
   const authHeader = request.headers.get("authorization") || "";
-  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
-  const isInternalCli = request.headers.get("x-hiperrouter-cli") === "true";
+  const ip = request.headers.get("x-9r-real-ip") || request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const isInternalCli = request.headers.get("x-hiperrouter-cli") === "true" && isLocalRequest(request);
   const clientKey = authHeader ? authHeader : ip;
   
   const rl = checkRateLimit(clientKey, isInternalCli);

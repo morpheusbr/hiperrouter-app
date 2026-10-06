@@ -101,8 +101,10 @@ export function isLocalRequest(request) {
 
   const serverStamp = request.headers.get("x-9r-server-stamp");
   const expectedStamp = process.env._INTERNAL_SERVER_STAMP;
-  // If internal server stamp is configured, require it to trust x-9r-real-ip
-  const isTrustedRealIp = !expectedStamp || serverStamp === expectedStamp;
+  // Fail-closed in production: strictly require matching server stamp to trust x-9r-real-ip
+  const isTrustedRealIp = expectedStamp
+    ? serverStamp === expectedStamp
+    : process.env.NODE_ENV !== "production";
 
   // Trusted peer IP from TCP socket (custom-server.js); unspoofable when stamped. Primary anchor for "local".
   const realIp = request.headers.get("x-9r-real-ip");
@@ -172,7 +174,7 @@ async function loadSettings() {
 async function isAuthenticated(request) {
   if (await hasValidToken(request)) return true;
   const settings = await loadSettings();
-  if (settings && settings.requireLogin === false) return true;
+  if (settings && settings.requireLogin === false) return isLocalRequest(request);
   return false;
 }
 

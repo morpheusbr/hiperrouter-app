@@ -132,13 +132,6 @@ const getPageInfo = (pathname) => {
       icon: "lan",
       breadcrumbs: [],
     };
-  if (pathname.includes("/skills"))
-    return {
-      title: "Agent Skills",
-      description: "Copy a link and paste to your AI to use HiperRouter — no install needed",
-      icon: "extension",
-      breadcrumbs: [],
-    };
   if (pathname.includes("/endpoint"))
     return {
       title: "Endpoint",
@@ -309,6 +302,10 @@ export default function Header({ onMenuClick, showMenuButton = true }) {
             </span>
           </div>
         )}
+        <div className="hidden md:flex items-center gap-1.5 px-2 py-1 rounded border border-border-subtle bg-surface-2/50 text-[10px] font-mono text-emerald-400">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_6px_rgba(34,197,94,0.8)]" />
+          <span className="tracking-wider">TAC-ENGAGED</span>
+        </div>
         <HeaderSearch />
         <HeaderLanguage />
         <HeaderMenu onLogout={handleLogout} />

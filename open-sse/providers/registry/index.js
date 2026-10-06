@@ -117,6 +117,7 @@ import p114 from "./github-models.js";
 import p115 from "./pollinations.js";
 import p116 from "./aimlapi.js";
 import p117 from "./stepfun.js";
+import p118 from "./freebuff.js";
 
 export default [
   p0,
@@ -237,4 +238,5 @@ export default [
   p115,
   p116,
   p117,
+  p118,
 ];
