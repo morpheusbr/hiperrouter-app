@@ -1,6 +1,7 @@
 export default {
   id: "cohere",
   priority: 90,
+  hasFree: true,
   alias: "cohere",
   display: {
     name: "Cohere",
@@ -9,10 +10,11 @@ export default {
     textIcon: "CO",
     website: "https://cohere.com",
     notice: {
+      text: "Free tier: 1,000 free requests/month with trial API key.",
       apiKeyUrl: "https://dashboard.cohere.com/api-keys",
     },
   },
-  category: "apikey",
+  category: "freeTier",
   transport: {
     baseUrl: "https://api.cohere.ai/v1/chat/completions",
     validateUrl: "https://api.cohere.ai/v1/models",

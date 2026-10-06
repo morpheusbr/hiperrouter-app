@@ -113,6 +113,10 @@ import p110 from "./devin.js";
 import p111 from "./meta.js";
 import p112 from "./cody.js";
 import p113 from "./poe.js";
+import p114 from "./github-models.js";
+import p115 from "./pollinations.js";
+import p116 from "./aimlapi.js";
+import p117 from "./stepfun.js";
 
 export default [
   p0,
@@ -229,4 +233,8 @@ export default [
   p111,
   p112,
   p113,
+  p114,
+  p115,
+  p116,
+  p117,
 ];

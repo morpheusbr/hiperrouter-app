@@ -1,6 +1,7 @@
 export default {
   id: "mistral",
   priority: 80,
+  hasFree: true,
   alias: "mistral",
   display: {
     name: "Mistral",
@@ -9,10 +10,11 @@ export default {
     textIcon: "MI",
     website: "https://mistral.ai",
     notice: {
+      text: "Free tier: Free experimental access to Codestral and small models.",
       apiKeyUrl: "https://console.mistral.ai/api-keys",
     },
   },
-  category: "apikey",
+  category: "freeTier",
   transport: {
     baseUrl: "https://api.mistral.ai/v1/chat/completions",
     validateUrl: "https://api.mistral.ai/v1/models",

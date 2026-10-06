@@ -1,0 +1,41 @@
+export default {
+  id: "github-models",
+  priority: 25,
+  hasFree: true,
+  alias: "github-models",
+  aliases: ["ghm", "gh-models"],
+  uiAlias: "ghm",
+  display: {
+    name: "GitHub Models",
+    icon: "code",
+    color: "#24292F",
+    textIcon: "GHM",
+    website: "https://github.com/marketplace/models",
+    notice: {
+      text: "Free tier: Access GPT-4o, Claude 3.5, Llama 3.3 with your GitHub Personal Access Token (PAT).",
+      apiKeyUrl: "https://github.com/settings/tokens",
+    },
+  },
+  category: "freeTier",
+  authType: "apikey",
+  transport: {
+    baseUrl: "https://models.github.ai/inference/chat/completions",
+    validateUrl: "https://models.github.ai/inference/models",
+    quirks: {
+      dropClientMetadata: true,
+    },
+  },
+  models: [
+    { id: "gpt-4o", name: "GPT-4o (GitHub Models)" },
+    { id: "gpt-4o-mini", name: "GPT-4o Mini (GitHub Models)" },
+    { id: "o1-mini", name: "o1-mini (GitHub Models)" },
+    { id: "o1-preview", name: "o1-preview (GitHub Models)" },
+    { id: "meta-llama/Llama-3.3-70B-Instruct", name: "Llama 3.3 70B (GitHub Models)" },
+    { id: "meta-llama/Llama-3.2-11B-Vision-Instruct", name: "Llama 3.2 11B Vision (GitHub Models)" },
+    { id: "Mistral-large-2407", name: "Mistral Large (GitHub Models)" },
+    { id: "Mistral-small", name: "Mistral Small (GitHub Models)" },
+    { id: "Cohere-command-r-plus", name: "Command R+ (GitHub Models)" },
+    { id: "AI21-Jamba-1.5-Large", name: "Jamba 1.5 Large (GitHub Models)" },
+  ],
+  passthroughModels: true,
+};

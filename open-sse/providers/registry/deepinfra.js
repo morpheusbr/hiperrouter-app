@@ -1,6 +1,7 @@
 export default {
   id: "deepinfra",
   priority: 63,
+  hasFree: true,
   alias: "deepinfra",
   display: {
     name: "DeepInfra",
@@ -9,10 +10,11 @@ export default {
     textIcon: "DI",
     website: "https://deepinfra.com",
     notice: {
+      text: "Free tier: $1.80 free starting credit for open source models.",
       apiKeyUrl: "https://deepinfra.com/dash/api_keys",
     },
   },
-  category: "apikey",
+  category: "freeTier",
   transport: {
     baseUrl: "https://api.deepinfra.com/v1/openai/chat/completions",
     validateUrl: "https://api.deepinfra.com/v1/openai/models",

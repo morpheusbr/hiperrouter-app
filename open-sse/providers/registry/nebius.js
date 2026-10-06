@@ -1,6 +1,7 @@
 export default {
   id: "nebius",
   priority: 70,
+  hasFree: true,
   alias: "nebius",
   display: {
     name: "Nebius AI",
@@ -9,10 +10,11 @@ export default {
     textIcon: "NB",
     website: "https://nebius.com",
     notice: {
+      text: "Free tier: Free trial credits on signup for studio models.",
       apiKeyUrl: "https://studio.nebius.com/settings/api-keys",
     },
   },
-  category: "apikey",
+  category: "freeTier",
   authType: "apikey",
   transport: {
     baseUrl: "https://api.studio.nebius.ai/v1/chat/completions",

@@ -1,6 +1,7 @@
 export default {
   id: "together",
   priority: 60,
+  hasFree: true,
   alias: "together",
   display: {
     name: "Together AI",
@@ -9,10 +10,11 @@ export default {
     textIcon: "TG",
     website: "https://www.together.ai",
     notice: {
+      text: "Free tier: $5 free credit on signup for open-source models.",
       apiKeyUrl: "https://api.together.xyz/settings/api-keys",
     },
   },
-  category: "apikey",
+  category: "freeTier",
   authType: "apikey",
   transport: {
     baseUrl: "https://api.together.xyz/v1/chat/completions",

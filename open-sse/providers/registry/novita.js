@@ -1,6 +1,7 @@
 export default {
   id: "novita",
   priority: 64,
+  hasFree: true,
   alias: "novita",
   display: {
     name: "Novita AI",
@@ -9,10 +10,11 @@ export default {
     textIcon: "NV",
     website: "https://novita.ai",
     notice: {
+      text: "Free tier: $0.50 free credit on signup for open-source models.",
       apiKeyUrl: "https://novita.ai/dashboard/key",
     },
   },
-  category: "apikey",
+  category: "freeTier",
   transport: {
     baseUrl: "https://api.novita.ai/v3/openai/chat/completions",
     validateUrl: "https://api.novita.ai/v3/openai/models",

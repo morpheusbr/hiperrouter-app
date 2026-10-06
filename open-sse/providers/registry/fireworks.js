@@ -1,6 +1,7 @@
 export default {
   id: "fireworks",
   priority: 50,
+  hasFree: true,
   alias: "fireworks",
   display: {
     name: "Fireworks AI",
@@ -9,10 +10,11 @@ export default {
     textIcon: "FW",
     website: "https://fireworks.ai",
     notice: {
+      text: "Free tier: $1 free credit on signup for ultra-fast models.",
       apiKeyUrl: "https://fireworks.ai/account/api-keys",
     },
   },
-  category: "apikey",
+  category: "freeTier",
   authType: "apikey",
   transport: {
     baseUrl: "https://api.fireworks.ai/inference/v1/chat/completions",

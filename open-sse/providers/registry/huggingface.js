@@ -14,10 +14,11 @@ export default {
     textIcon: "HF",
     website: "https://huggingface.co",
     notice: {
+      text: "Free tier: Serverless Inference API for open-source models with User Access Token.",
       apiKeyUrl: "https://huggingface.co/settings/tokens",
     },
   },
-  category: "apikey",
+  category: "freeTier",
   authType: "apikey",
   hiddenKinds: [
     "tts",

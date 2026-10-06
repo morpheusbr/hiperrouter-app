@@ -1,6 +1,7 @@
 export default {
   id: "hyperbolic",
-  priority: 160,
+  priority: 85,
+  hasFree: true,
   alias: "hyperbolic",
   aliases: [
     "hyp",
@@ -13,10 +14,11 @@ export default {
     textIcon: "HY",
     website: "https://hyperbolic.xyz",
     notice: {
+      text: "Free tier: Free trial compute for open-source models.",
       apiKeyUrl: "https://app.hyperbolic.xyz/settings",
     },
   },
-  category: "apikey",
+  category: "freeTier",
   authType: "apikey",
   transport: {
     baseUrl: "https://api.hyperbolic.xyz/v1/chat/completions",

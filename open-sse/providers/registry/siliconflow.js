@@ -1,6 +1,7 @@
 export default {
   id: "siliconflow",
-  priority: 250,
+  priority: 65,
+  hasFree: true,
   alias: "siliconflow",
   display: {
     name: "SiliconFlow",
@@ -9,10 +10,11 @@ export default {
     textIcon: "SF",
     website: "https://cloud.siliconflow.com",
     notice: {
+      text: "Free tier: 20M tokens on signup for DeepSeek V3, Qwen, etc.",
       apiKeyUrl: "https://cloud.siliconflow.com/account/ak",
     },
   },
-  category: "apikey",
+  category: "freeTier",
   transport: {
     baseUrl: "https://api.siliconflow.com/v1/chat/completions",
     validateUrl: "https://api.siliconflow.com/v1/models",

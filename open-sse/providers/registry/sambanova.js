@@ -1,6 +1,7 @@
 export default {
   id: "sambanova",
   priority: 62,
+  hasFree: true,
   alias: "sambanova",
   display: {
     name: "SambaNova",
@@ -9,10 +10,11 @@ export default {
     textIcon: "SN",
     website: "https://cloud.sambanova.ai",
     notice: {
+      text: "Free tier: Fast inference for Llama 3.3 70B and 3.1 405B.",
       apiKeyUrl: "https://cloud.sambanova.ai/apis",
     },
   },
-  category: "apikey",
+  category: "freeTier",
   transport: {
     baseUrl: "https://api.sambanova.ai/v1/chat/completions",
     validateUrl: "https://api.sambanova.ai/v1/models",

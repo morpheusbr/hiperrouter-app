@@ -1,6 +1,7 @@
 export default {
   id: "maritaca",
   priority: 65,
+  hasFree: true,
   alias: "maritaca",
   display: {
     name: "Maritaca AI",
@@ -9,10 +10,11 @@ export default {
     textIcon: "MA",
     website: "https://www.maritaca.ai",
     notice: {
+      text: "Free tier: Brazilian LLM MariTalk (Sabiá-3) with free trial quota.",
       apiKeyUrl: "https://chat.maritaca.ai",
     },
   },
-  category: "apikey",
+  category: "freeTier",
   transport: {
     baseUrl: "https://chat.maritaca.ai/api/chat/completions",
     validateUrl: "https://chat.maritaca.ai/api/models",

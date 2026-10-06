@@ -1,6 +1,7 @@
 export default {
   id: "cerebras",
   priority: 60,
+  hasFree: true,
   alias: "cerebras",
   display: {
     name: "Cerebras",
@@ -9,10 +10,11 @@ export default {
     textIcon: "CB",
     website: "https://www.cerebras.ai",
     notice: {
+      text: "Free tier: 1M tokens/day at 1,800+ tokens/sec.",
       apiKeyUrl: "https://cloud.cerebras.ai/platform",
     },
   },
-  category: "apikey",
+  category: "freeTier",
   transport: {
     baseUrl: "https://api.cerebras.ai/v1/chat/completions",
     validateUrl: "https://api.cerebras.ai/v1/models",

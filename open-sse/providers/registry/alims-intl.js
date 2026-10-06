@@ -3,6 +3,7 @@
 export default {
   id: "alims-intl",
   priority: 11,
+  hasFree: true,
   alias: "alims-intl",
   display: {
     name: "Alibaba Studio",
@@ -11,10 +12,11 @@ export default {
     textIcon: "ALi",
     website: "https://modelstudio.console.alibabacloud.com",
     notice: {
+      text: "Free tier: Free token quota for Qwen3, GLM, Kimi on DashScope.",
       apiKeyUrl: "https://modelstudio.console.alibabacloud.com/?apiKey=1",
     },
   },
-  category: "apikey",
+  category: "freeTier",
   transport: {
     baseUrl: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions",
     headers: {},

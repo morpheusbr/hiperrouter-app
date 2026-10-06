@@ -10,10 +10,11 @@ export default {
     textIcon: "GQ",
     website: "https://groq.com",
     notice: {
+      text: "Free tier with high rate limits: Llama 3.3 70B, Qwen3 32B, Whisper.",
       apiKeyUrl: "https://console.groq.com/keys",
     },
   },
-  category: "apikey",
+  category: "freeTier",
   transport: {
     baseUrl: "https://api.groq.com/openai/v1/chat/completions",
     validateUrl: "https://api.groq.com/openai/v1/models",
